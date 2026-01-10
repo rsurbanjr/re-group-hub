@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    const { messages, system } = await request.json();
+    const body = await request.json();
+    const { messages, system } = body;
     
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
@@ -27,15 +28,15 @@ export async function POST(request) {
       })
     });
 
+    const data = await response.json();
+    
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
       return NextResponse.json(
         { error: `API error: ${response.status}` },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
     return NextResponse.json(data);
     
   } catch (error) {
@@ -46,14 +47,7 @@ export async function POST(request) {
     );
   }
 }
-```
 
-10. Commit
-
-Now you should have:
-```
-app/
-  api/
-    route.js          ← placeholder
-    chat/
-      route.js        ← AI assistant
+export async function GET() {
+  return NextResponse.json({ status: 'AI Chat API ready' });
+}
