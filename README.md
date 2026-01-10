@@ -38,5 +38,4 @@ This app is configured for deployment on Vercel.
 - Tailwind CSS
 - Recharts
 - LocalStorage for data persistence
-
-- 
+<!-- force deploy -->
