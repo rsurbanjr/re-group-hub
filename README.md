@@ -40,3 +40,4 @@ This app is configured for deployment on Vercel.
 - LocalStorage for data persistence
 <!-- force deploy -->
 <!-- force deploy -->
+<!-- force deploy -->
