@@ -1408,7 +1408,6 @@ Guidelines:
     { id: 'properties', label: 'Properties', icon: Icons.MapPin },
     { id: 'analytics', label: 'Analytics', icon: Icons.BarChart },
     { id: 'mastery', label: 'Mastery', icon: Icons.Award },
-    { id: 'settings', label: 'Settings', icon: Icons.Settings },
   ];
 
   // Loading screen
@@ -1503,28 +1502,14 @@ Guidelines:
             >
               <Icons.HelpCircle />
             </button>
-            {/* Dark Mode Toggle */}
+            {/* Settings Button */}
             <button
-              onClick={() => setDarkMode(!darkMode)}
+              onClick={() => setShowModal('settings')}
               className={`p-2 rounded-lg ${theme.bgMuted} ${theme.text} hover:bg-cyan-500/20 transition-all`}
-              title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              title="Settings"
             >
-              {darkMode ? <Icons.Sun /> : <Icons.Moon />}
+              <Icons.Settings />
             </button>
-            {/* Logout Button */}
-            {user && (
-              <button
-                onClick={async () => {
-                  if (isSupabaseConfigured()) {
-                    await supabase.auth.signOut();
-                  }
-                }}
-                className={`px-3 py-2 rounded-lg ${theme.bgMuted} ${theme.text} hover:bg-rose-500/20 hover:text-rose-400 transition-all text-sm`}
-                title="Sign Out"
-              >
-                Sign Out
-              </button>
-            )}
           </div>
         </div>
         
@@ -3463,107 +3448,108 @@ Guidelines:
           </div>
         )}
 
-        {/* SETTINGS */}
-        {activeTab === 'settings' && (
-          <div className="space-y-6">
-            <div className={`${theme.bgCard} rounded-xl p-6 shadow-sm border ${theme.border}`}>
-              <h2 className={`text-xl font-semibold ${theme.text} mb-6`}>Profile Settings</h2>
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <label className={`block text-sm font-medium ${theme.textMuted} mb-2`}>Display Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="Your name..."
-                    className={`w-full px-4 py-3 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
-                    value={userProfile.displayName || ''}
-                    onChange={e => setUserProfile({...userProfile, displayName: e.target.value})}
-                  />
-                  <p className={`text-xs ${theme.textMuted} mt-1`}>This is how you'll be greeted in the app</p>
-                </div>
-                
-                <div>
-                  <label className={`block text-sm font-medium ${theme.textMuted} mb-2`}>Title / Role</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Real Estate Agent, Broker..."
-                    className={`w-full px-4 py-3 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
-                    value={userProfile.title || ''}
-                    onChange={e => setUserProfile({...userProfile, title: e.target.value})}
-                  />
-                </div>
-                
-                <div>
-                  <label className={`block text-sm font-medium ${theme.textMuted} mb-2`}>Company / Brokerage</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. One Sotheby's International Realty..."
-                    className={`w-full px-4 py-3 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
-                    value={userProfile.company || ''}
-                    onChange={e => setUserProfile({...userProfile, company: e.target.value})}
-                  />
-                </div>
-                
-                <div>
-                  <label className={`block text-sm font-medium ${theme.textMuted} mb-2`}>Phone</label>
-                  <input 
-                    type="tel" 
-                    placeholder="(555) 123-4567"
-                    className={`w-full px-4 py-3 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
-                    value={userProfile.phone || ''}
-                    onChange={e => setUserProfile({...userProfile, phone: e.target.value})}
-                  />
-                </div>
-              </div>
-              
-              <div className={`mt-6 p-4 ${theme.bgMuted} rounded-lg`}>
-                <p className={`text-sm ${theme.textMuted}`}>
-                  <span className="text-cyan-500">✓</span> Changes are saved automatically
-                </p>
-              </div>
+      </main>
+
+      {/* Settings Modal */}
+      {showModal === 'settings' && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(null)}>
+          <div className={`${theme.bgCard} rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto transition-colors duration-300`} onClick={e => e.stopPropagation()}>
+            <div className={`p-4 border-b ${theme.border} flex justify-between items-center`}>
+              <h3 className={`font-semibold ${theme.text}`}>Settings</h3>
+              <button onClick={() => setShowModal(null)} className={`p-1 ${theme.bgMuted} rounded ${theme.textMuted}`}><Icons.X /></button>
             </div>
-            
-            <div className={`${theme.bgCard} rounded-xl p-6 shadow-sm border ${theme.border}`}>
-              <h2 className={`text-xl font-semibold ${theme.text} mb-6`}>Account</h2>
-              
-              <div className="space-y-4">
-                <div className={`flex items-center justify-between p-4 ${theme.bgMuted} rounded-lg`}>
+            <div className="p-4 space-y-6">
+              {/* Profile Section */}
+              <div>
+                <h4 className={`text-sm font-semibold ${theme.textMuted} uppercase tracking-wide mb-3`}>Profile</h4>
+                <div className="space-y-3">
                   <div>
-                    <p className={`font-medium ${theme.text}`}>Email</p>
-                    <p className={`text-sm ${theme.textMuted}`}>{user?.email || 'Not logged in'}</p>
+                    <label className={`block text-sm ${theme.textMuted} mb-1`}>Display Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Your name..."
+                      className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                      value={userProfile.displayName || ''}
+                      onChange={e => setUserProfile({...userProfile, displayName: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${theme.textMuted} mb-1`}>Title / Role</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Real Estate Agent..."
+                      className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                      value={userProfile.title || ''}
+                      onChange={e => setUserProfile({...userProfile, title: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${theme.textMuted} mb-1`}>Company / Brokerage</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. One Sotheby's..."
+                      className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                      value={userProfile.company || ''}
+                      onChange={e => setUserProfile({...userProfile, company: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${theme.textMuted} mb-1`}>Phone</label>
+                    <input 
+                      type="tel" 
+                      placeholder="(555) 123-4567"
+                      className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                      value={userProfile.phone || ''}
+                      onChange={e => setUserProfile({...userProfile, phone: e.target.value})}
+                    />
                   </div>
                 </div>
-                
-                <div className={`flex items-center justify-between p-4 ${theme.bgMuted} rounded-lg`}>
-                  <div>
-                    <p className={`font-medium ${theme.text}`}>Dark Mode</p>
-                    <p className={`text-sm ${theme.textMuted}`}>Toggle dark/light theme</p>
-                  </div>
-                  <button 
-                    onClick={() => setDarkMode(!darkMode)}
-                    className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-cyan-500 text-white' : `${theme.border} border ${theme.text}`}`}
-                  >
-                    {darkMode ? 'On' : 'Off'}
-                  </button>
-                </div>
-                
-                {user && (
-                  <button
-                    onClick={async () => {
-                      if (isSupabaseConfigured()) {
-                        await supabase.auth.signOut();
-                      }
-                    }}
-                    className="w-full mt-4 px-4 py-3 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500/20 transition-colors"
-                  >
-                    Sign Out
-                  </button>
-                )}
               </div>
+              
+              {/* Account Section */}
+              <div>
+                <h4 className={`text-sm font-semibold ${theme.textMuted} uppercase tracking-wide mb-3`}>Account</h4>
+                <div className="space-y-3">
+                  <div className={`flex items-center justify-between p-3 ${theme.bgMuted} rounded-lg`}>
+                    <div>
+                      <p className={`text-sm font-medium ${theme.text}`}>Email</p>
+                      <p className={`text-xs ${theme.textMuted}`}>{user?.email || 'Not logged in'}</p>
+                    </div>
+                  </div>
+                  <div className={`flex items-center justify-between p-3 ${theme.bgMuted} rounded-lg`}>
+                    <div>
+                      <p className={`text-sm font-medium ${theme.text}`}>Dark Mode</p>
+                    </div>
+                    <button 
+                      onClick={() => setDarkMode(!darkMode)}
+                      className={`px-3 py-1.5 rounded-lg text-sm ${darkMode ? 'bg-cyan-500 text-white' : `border ${theme.border} ${theme.text}`}`}
+                    >
+                      {darkMode ? 'On' : 'Off'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className={`text-xs ${theme.textMuted} text-center`}>
+                Changes are saved automatically
+              </div>
+              
+              {user && (
+                <button
+                  onClick={async () => {
+                    if (isSupabaseConfigured()) {
+                      await supabase.auth.signOut();
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500/20 transition-colors text-sm font-medium"
+                >
+                  Sign Out
+                </button>
+              )}
             </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
       {/* Deal Detail Slide-over */}
       {selectedDeal && (
