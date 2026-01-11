@@ -13,8 +13,15 @@ if (typeof window !== 'undefined') {
 }
 
 // Create client only if credentials are provided
+// Using sessionStorage so user is logged out when tab closes
 export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    })
   : null
 
 export const isSupabaseConfigured = () => !!(supabaseUrl && supabaseAnonKey && supabase)
