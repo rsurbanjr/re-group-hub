@@ -879,7 +879,7 @@ export default function REGroupHub({ user }) {
   const getDealsForContact = (contactId) => deals.filter(d => d.contactIds?.includes(contactId));
   
   // Contact filtering
-  const contactTypes = ['All', 'Client', 'Buyer', 'Seller', 'Developer', 'Investor', 'Referral', 'Agent'];
+  const contactTypes = ['All', 'Client', 'Buyer', 'Seller', 'Developer', 'Investor', 'Referral', 'Agent', 'Broker'];
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = contact.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
                           contact.company.toLowerCase().includes(contactSearch.toLowerCase()) ||
@@ -4359,7 +4359,7 @@ Guidelines:
                   {['Gables Estates', 'Cocoplum', 'Old Cutler Bay', 'Coral Gables', 'Coconut Grove', 'Pinecrest', 'Various', 'TBD'].map(n => <option key={n}>{n}</option>)}
                 </select>
                 <select className={`px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`} value={formData.type || 'Buyer'} onChange={e => setFormData({...formData, type: e.target.value})}>
-                  {['Buyer', 'Seller', 'Developer', 'Investor', 'Landlord', 'Tenant', 'Agent'].map(t => <option key={t}>{t}</option>)}
+                  {['Buyer', 'Seller', 'Developer', 'Investor', 'Landlord', 'Tenant', 'Agent', 'Broker'].map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
               {/* Value and Commission Percentage */}
