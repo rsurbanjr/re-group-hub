@@ -39,3 +39,4 @@ This app is configured for deployment on Vercel.
 - Recharts
 - LocalStorage for data persistence
 <!-- force deploy -->
+<!-- force deploy -->
