@@ -58,6 +58,11 @@ const Icons = {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
     </svg>
   ),
+  Settings: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
 };
 
 // Colors
@@ -259,6 +264,9 @@ export default function REGroupHub({ user }) {
   const [tasks, setTasks] = useState([]);
   const [activities, setActivities] = useState([]);
   
+  // User profile
+  const [userProfile, setUserProfile] = useState({ displayName: '', company: '', phone: '', title: '' });
+  
   // Modal states
   const [showModal, setShowModal] = useState(null);
   const [selectedDeal, setSelectedDeal] = useState(null);
@@ -362,7 +370,7 @@ export default function REGroupHub({ user }) {
             supabase.from('activities').select('*').order('date', { ascending: false }),
             supabase.from('properties').select('*').order('created_at', { ascending: false }),
             supabase.from('templates').select('*').order('name', { ascending: true }),
-            supabase.from('user_settings').select('*').eq('user_id', 'default').maybeSingle()
+            supabase.from('user_settings').select('*').eq('user_id', user?.id).maybeSingle()
           ]);
 
           if (contactsRes.error) throw contactsRes.error;
@@ -390,6 +398,7 @@ export default function REGroupHub({ user }) {
             if (s.masteredProperties) setMasteredProperties(s.masteredProperties);
             if (s.totalPoints !== undefined) setTotalPoints(s.totalPoints);
             if (s.currentStreak !== undefined) setCurrentStreak(s.currentStreak);
+            if (s.userProfile) setUserProfile(s.userProfile);
           }
           
           // Check onboarding
@@ -454,7 +463,8 @@ export default function REGroupHub({ user }) {
         completedWeeklyTasks,
         masteredProperties,
         totalPoints,
-        currentStreak
+        currentStreak,
+        userProfile
       };
       
       // Always save to localStorage
@@ -471,7 +481,7 @@ export default function REGroupHub({ user }) {
       if (isSupabaseConfigured()) {
         try {
           await supabase.from('user_settings').upsert({
-            user_id: 'default',
+            user_id: user?.id || 'default',
             settings,
             updated_at: new Date().toISOString()
           });
@@ -483,7 +493,7 @@ export default function REGroupHub({ user }) {
     
     const timer = setTimeout(saveSettings, 1000);
     return () => clearTimeout(timer);
-  }, [isLoading, darkMode, goals, quizScores, completedDailyHabits, completedWeeklyTasks, masteredProperties, totalPoints, currentStreak]);
+  }, [isLoading, darkMode, goals, quizScores, completedDailyHabits, completedWeeklyTasks, masteredProperties, totalPoints, currentStreak, userProfile, user]);
 
   // Supabase CRUD helpers
   const dbInsert = async (table, record) => {
@@ -659,7 +669,7 @@ export default function REGroupHub({ user }) {
   const currentHour = now.getHours();
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 17 ? 'Good afternoon' : 'Good evening';
   const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const userName = 'Roxanna';
+  const userName = userProfile.displayName || user?.email?.split('@')[0] || 'there';
 
   // Task due date helpers
   const getTaskDueStatus = (dueDate) => {
@@ -879,7 +889,7 @@ export default function REGroupHub({ user }) {
   const getDealsForContact = (contactId) => deals.filter(d => d.contactIds?.includes(contactId));
   
   // Contact filtering
-  const contactTypes = ['All', 'Client', 'Buyer', 'Seller', 'Developer', 'Investor', 'Referral', 'Agent', 'Broker'];
+  const contactTypes = ['All', 'Client', 'Buyer', 'Seller', 'Developer', 'Investor', 'Referral'];
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = contact.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
                           contact.company.toLowerCase().includes(contactSearch.toLowerCase()) ||
@@ -1386,8 +1396,6 @@ Guidelines:
     'Developer': { bg: '#f3e8ff', text: '#9333ea' },
     'Investor': { bg: '#fff1f2', text: '#e11d48' },
     'Referral': { bg: '#dbeafe', text: '#2563eb' },
-    'Agent': { bg: '#fef9c3', text: '#ca8a04' },
-    'Broker': { bg: '#ffedd5', text: '#ea580c' },
   };
 
   const tabs = [
@@ -1400,6 +1408,7 @@ Guidelines:
     { id: 'properties', label: 'Properties', icon: Icons.MapPin },
     { id: 'analytics', label: 'Analytics', icon: Icons.BarChart },
     { id: 'mastery', label: 'Mastery', icon: Icons.Award },
+    { id: 'settings', label: 'Settings', icon: Icons.Settings },
   ];
 
   // Loading screen
@@ -3453,6 +3462,107 @@ Guidelines:
             )}
           </div>
         )}
+
+        {/* SETTINGS */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <div className={`${theme.bgCard} rounded-xl p-6 shadow-sm border ${theme.border}`}>
+              <h2 className={`text-xl font-semibold ${theme.text} mb-6`}>Profile Settings</h2>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textMuted} mb-2`}>Display Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="Your name..."
+                    className={`w-full px-4 py-3 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                    value={userProfile.displayName || ''}
+                    onChange={e => setUserProfile({...userProfile, displayName: e.target.value})}
+                  />
+                  <p className={`text-xs ${theme.textMuted} mt-1`}>This is how you'll be greeted in the app</p>
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textMuted} mb-2`}>Title / Role</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Real Estate Agent, Broker..."
+                    className={`w-full px-4 py-3 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                    value={userProfile.title || ''}
+                    onChange={e => setUserProfile({...userProfile, title: e.target.value})}
+                  />
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textMuted} mb-2`}>Company / Brokerage</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. One Sotheby's International Realty..."
+                    className={`w-full px-4 py-3 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                    value={userProfile.company || ''}
+                    onChange={e => setUserProfile({...userProfile, company: e.target.value})}
+                  />
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textMuted} mb-2`}>Phone</label>
+                  <input 
+                    type="tel" 
+                    placeholder="(555) 123-4567"
+                    className={`w-full px-4 py-3 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                    value={userProfile.phone || ''}
+                    onChange={e => setUserProfile({...userProfile, phone: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className={`mt-6 p-4 ${theme.bgMuted} rounded-lg`}>
+                <p className={`text-sm ${theme.textMuted}`}>
+                  <span className="text-cyan-500">✓</span> Changes are saved automatically
+                </p>
+              </div>
+            </div>
+            
+            <div className={`${theme.bgCard} rounded-xl p-6 shadow-sm border ${theme.border}`}>
+              <h2 className={`text-xl font-semibold ${theme.text} mb-6`}>Account</h2>
+              
+              <div className="space-y-4">
+                <div className={`flex items-center justify-between p-4 ${theme.bgMuted} rounded-lg`}>
+                  <div>
+                    <p className={`font-medium ${theme.text}`}>Email</p>
+                    <p className={`text-sm ${theme.textMuted}`}>{user?.email || 'Not logged in'}</p>
+                  </div>
+                </div>
+                
+                <div className={`flex items-center justify-between p-4 ${theme.bgMuted} rounded-lg`}>
+                  <div>
+                    <p className={`font-medium ${theme.text}`}>Dark Mode</p>
+                    <p className={`text-sm ${theme.textMuted}`}>Toggle dark/light theme</p>
+                  </div>
+                  <button 
+                    onClick={() => setDarkMode(!darkMode)}
+                    className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-cyan-500 text-white' : `${theme.border} border ${theme.text}`}`}
+                  >
+                    {darkMode ? 'On' : 'Off'}
+                  </button>
+                </div>
+                
+                {user && (
+                  <button
+                    onClick={async () => {
+                      if (isSupabaseConfigured()) {
+                        await supabase.auth.signOut();
+                      }
+                    }}
+                    className="w-full mt-4 px-4 py-3 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500/20 transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Deal Detail Slide-over */}
@@ -4361,7 +4471,7 @@ Guidelines:
                   {['Gables Estates', 'Cocoplum', 'Old Cutler Bay', 'Coral Gables', 'Coconut Grove', 'Pinecrest', 'Various', 'TBD'].map(n => <option key={n}>{n}</option>)}
                 </select>
                 <select className={`px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`} value={formData.type || 'Buyer'} onChange={e => setFormData({...formData, type: e.target.value})}>
-                  {['Buyer', 'Seller', 'Developer', 'Investor', 'Landlord', 'Tenant', 'Agent', 'Broker'].map(t => <option key={t}>{t}</option>)}
+                  {['Buyer', 'Seller', 'Developer', 'Investor', 'Landlord', 'Tenant'].map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
               {/* Value and Commission Percentage */}
