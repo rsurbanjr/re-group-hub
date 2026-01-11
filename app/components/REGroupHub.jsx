@@ -1380,12 +1380,15 @@ Guidelines:
   };
 
   const typeColors = {
+    const typeColors = {
     'Client': { bg: '#ecfeff', text: '#0891b2' },
     'Buyer': { bg: '#ecfdf5', text: '#059669' },
     'Seller': { bg: '#fef3c7', text: '#d97706' },
     'Developer': { bg: '#f3e8ff', text: '#9333ea' },
     'Investor': { bg: '#fff1f2', text: '#e11d48' },
     'Referral': { bg: '#dbeafe', text: '#2563eb' },
+    'Agent': { bg: '#fef9c3', text: '#ca8a04' },
+    'Broker': { bg: '#ffedd5', text: '#ea580c' },
   };
 
   const tabs = [
