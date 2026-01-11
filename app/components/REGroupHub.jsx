@@ -63,6 +63,11 @@ const Icons = {
       <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
   ),
+  Calculator: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="8" y2="18.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="16" y1="18" x2="16" y2="18.01"/>
+    </svg>
+  ),
 };
 
 // Colors
@@ -328,6 +333,32 @@ export default function REGroupHub({ user }) {
   // Drag & Drop state
   const [draggedDeal, setDraggedDeal] = useState(null);
   const [dragOverStage, setDragOverStage] = useState(null);
+
+  // Deal Checker state
+  const [dealCheckerInputs, setDealCheckerInputs] = useState({
+    projectName: '',
+    acquisitionCost: '',
+    constructionCost: '',
+    softCosts: '',
+    financingCosts: '',
+    targetSalePrice: '',
+    holdingPeriodMonths: 18,
+    equityRequired: '',
+    loanAmount: '',
+    loanRate: 8.5,
+  });
+  const [scoreSettings, setScoreSettings] = useState({
+    moicMin: 1.5,
+    moicTarget: 2.0,
+    moicExcellent: 2.5,
+    irrMin: 15,
+    irrTarget: 25,
+    irrExcellent: 35,
+    profitMarginMin: 15,
+    profitMarginTarget: 25,
+    profitMarginExcellent: 35,
+  });
+  const [showScoreSettings, setShowScoreSettings] = useState(false);
 
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -1406,6 +1437,7 @@ Guidelines:
     { id: 'pipeline', label: 'Deals', icon: Icons.Briefcase, badge: deals.filter(d => d.stage === 'Negotiate' || d.stage === 'Contract').length, badgeType: 'info' },
     { id: 'contacts', label: 'Contacts', icon: Icons.Users },
     { id: 'properties', label: 'Properties', icon: Icons.MapPin },
+    { id: 'dealchecker', label: 'Deal Checker', icon: Icons.Calculator },
     { id: 'analytics', label: 'Analytics', icon: Icons.BarChart },
     { id: 'mastery', label: 'Mastery', icon: Icons.Award },
   ];
@@ -2972,6 +3004,396 @@ Guidelines:
                   ));
                 })()}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* DEAL CHECKER */}
+        {activeTab === 'dealchecker' && (
+          <div className="space-y-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <h2 className={`text-xl font-semibold ${theme.text}`}>Deal Checker</h2>
+                <p className={theme.textMuted}>Quick pro forma analysis with deal scoring</p>
+              </div>
+              <button
+                onClick={() => setShowScoreSettings(!showScoreSettings)}
+                className={`px-4 py-2 rounded-lg ${theme.bgMuted} ${theme.text} hover:bg-cyan-500/20 transition-all flex items-center gap-2`}
+              >
+                <Icons.Settings /> Score Settings
+              </button>
+            </div>
+
+            {/* Score Settings Panel */}
+            {showScoreSettings && (
+              <div className={`${theme.bgCard} rounded-xl p-6 shadow-sm border ${theme.border}`}>
+                <h3 className={`font-semibold ${theme.text} mb-4`}>Scoring Thresholds</h3>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div>
+                    <h4 className={`text-sm font-medium ${theme.textMuted} mb-3`}>MOIC (Multiple on Invested Capital)</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted} w-16`}>Min:</span>
+                        <input type="number" step="0.1" className={`flex-1 px-2 py-1 text-sm border ${theme.border} rounded ${theme.bgInput} ${theme.text}`} value={scoreSettings.moicMin} onChange={e => setScoreSettings({...scoreSettings, moicMin: parseFloat(e.target.value) || 0})} />
+                        <span className="text-xs text-rose-500">x</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted} w-16`}>Target:</span>
+                        <input type="number" step="0.1" className={`flex-1 px-2 py-1 text-sm border ${theme.border} rounded ${theme.bgInput} ${theme.text}`} value={scoreSettings.moicTarget} onChange={e => setScoreSettings({...scoreSettings, moicTarget: parseFloat(e.target.value) || 0})} />
+                        <span className="text-xs text-amber-500">x</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted} w-16`}>Excellent:</span>
+                        <input type="number" step="0.1" className={`flex-1 px-2 py-1 text-sm border ${theme.border} rounded ${theme.bgInput} ${theme.text}`} value={scoreSettings.moicExcellent} onChange={e => setScoreSettings({...scoreSettings, moicExcellent: parseFloat(e.target.value) || 0})} />
+                        <span className="text-xs text-emerald-500">x</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className={`text-sm font-medium ${theme.textMuted} mb-3`}>IRR (Internal Rate of Return)</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted} w-16`}>Min:</span>
+                        <input type="number" className={`flex-1 px-2 py-1 text-sm border ${theme.border} rounded ${theme.bgInput} ${theme.text}`} value={scoreSettings.irrMin} onChange={e => setScoreSettings({...scoreSettings, irrMin: parseFloat(e.target.value) || 0})} />
+                        <span className="text-xs text-rose-500">%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted} w-16`}>Target:</span>
+                        <input type="number" className={`flex-1 px-2 py-1 text-sm border ${theme.border} rounded ${theme.bgInput} ${theme.text}`} value={scoreSettings.irrTarget} onChange={e => setScoreSettings({...scoreSettings, irrTarget: parseFloat(e.target.value) || 0})} />
+                        <span className="text-xs text-amber-500">%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted} w-16`}>Excellent:</span>
+                        <input type="number" className={`flex-1 px-2 py-1 text-sm border ${theme.border} rounded ${theme.bgInput} ${theme.text}`} value={scoreSettings.irrExcellent} onChange={e => setScoreSettings({...scoreSettings, irrExcellent: parseFloat(e.target.value) || 0})} />
+                        <span className="text-xs text-emerald-500">%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className={`text-sm font-medium ${theme.textMuted} mb-3`}>Profit Margin</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted} w-16`}>Min:</span>
+                        <input type="number" className={`flex-1 px-2 py-1 text-sm border ${theme.border} rounded ${theme.bgInput} ${theme.text}`} value={scoreSettings.profitMarginMin} onChange={e => setScoreSettings({...scoreSettings, profitMarginMin: parseFloat(e.target.value) || 0})} />
+                        <span className="text-xs text-rose-500">%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted} w-16`}>Target:</span>
+                        <input type="number" className={`flex-1 px-2 py-1 text-sm border ${theme.border} rounded ${theme.bgInput} ${theme.text}`} value={scoreSettings.profitMarginTarget} onChange={e => setScoreSettings({...scoreSettings, profitMarginTarget: parseFloat(e.target.value) || 0})} />
+                        <span className="text-xs text-amber-500">%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted} w-16`}>Excellent:</span>
+                        <input type="number" className={`flex-1 px-2 py-1 text-sm border ${theme.border} rounded ${theme.bgInput} ${theme.text}`} value={scoreSettings.profitMarginExcellent} onChange={e => setScoreSettings({...scoreSettings, profitMarginExcellent: parseFloat(e.target.value) || 0})} />
+                        <span className="text-xs text-emerald-500">%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Input Form */}
+              <div className={`${theme.bgCard} rounded-xl p-6 shadow-sm border ${theme.border}`}>
+                <h3 className={`font-semibold ${theme.text} mb-4`}>Project Inputs</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block text-sm ${theme.textMuted} mb-1`}>Project Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 123 Main Street Development"
+                      className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`}
+                      value={dealCheckerInputs.projectName}
+                      onChange={e => setDealCheckerInputs({...dealCheckerInputs, projectName: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm ${theme.textMuted} mb-1`}>Acquisition Cost</label>
+                      <div className="relative">
+                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme.textMuted}`}>$</span>
+                        <input 
+                          type="number" 
+                          placeholder="10,500,000"
+                          className={`w-full pl-7 pr-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`}
+                          value={dealCheckerInputs.acquisitionCost}
+                          onChange={e => setDealCheckerInputs({...dealCheckerInputs, acquisitionCost: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`block text-sm ${theme.textMuted} mb-1`}>Construction Cost</label>
+                      <div className="relative">
+                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme.textMuted}`}>$</span>
+                        <input 
+                          type="number" 
+                          placeholder="12,000,000"
+                          className={`w-full pl-7 pr-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`}
+                          value={dealCheckerInputs.constructionCost}
+                          onChange={e => setDealCheckerInputs({...dealCheckerInputs, constructionCost: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm ${theme.textMuted} mb-1`}>Soft Costs</label>
+                      <div className="relative">
+                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme.textMuted}`}>$</span>
+                        <input 
+                          type="number" 
+                          placeholder="2,500,000"
+                          className={`w-full pl-7 pr-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`}
+                          value={dealCheckerInputs.softCosts}
+                          onChange={e => setDealCheckerInputs({...dealCheckerInputs, softCosts: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`block text-sm ${theme.textMuted} mb-1`}>Financing Costs</label>
+                      <div className="relative">
+                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme.textMuted}`}>$</span>
+                        <input 
+                          type="number" 
+                          placeholder="1,500,000"
+                          className={`w-full pl-7 pr-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`}
+                          value={dealCheckerInputs.financingCosts}
+                          onChange={e => setDealCheckerInputs({...dealCheckerInputs, financingCosts: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${theme.textMuted} mb-1`}>Target Sale Price</label>
+                    <div className="relative">
+                      <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme.textMuted}`}>$</span>
+                      <input 
+                        type="number" 
+                        placeholder="35,000,000"
+                        className={`w-full pl-7 pr-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`}
+                        value={dealCheckerInputs.targetSalePrice}
+                        onChange={e => setDealCheckerInputs({...dealCheckerInputs, targetSalePrice: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm ${theme.textMuted} mb-1`}>Holding Period (months)</label>
+                      <input 
+                        type="number" 
+                        className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`}
+                        value={dealCheckerInputs.holdingPeriodMonths}
+                        onChange={e => setDealCheckerInputs({...dealCheckerInputs, holdingPeriodMonths: parseInt(e.target.value) || 0})}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm ${theme.textMuted} mb-1`}>Equity Required</label>
+                      <div className="relative">
+                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme.textMuted}`}>$</span>
+                        <input 
+                          type="number" 
+                          placeholder="8,000,000"
+                          className={`w-full pl-7 pr-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`}
+                          value={dealCheckerInputs.equityRequired}
+                          onChange={e => setDealCheckerInputs({...dealCheckerInputs, equityRequired: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setDealCheckerInputs({
+                      projectName: '',
+                      acquisitionCost: '',
+                      constructionCost: '',
+                      softCosts: '',
+                      financingCosts: '',
+                      targetSalePrice: '',
+                      holdingPeriodMonths: 18,
+                      equityRequired: '',
+                      loanAmount: '',
+                      loanRate: 8.5,
+                    })}
+                    className={`w-full mt-2 px-4 py-2 ${theme.bgMuted} ${theme.textMuted} rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors text-sm`}
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+
+              {/* Results Panel */}
+              {(() => {
+                const acquisition = parseFloat(dealCheckerInputs.acquisitionCost) || 0;
+                const construction = parseFloat(dealCheckerInputs.constructionCost) || 0;
+                const soft = parseFloat(dealCheckerInputs.softCosts) || 0;
+                const financing = parseFloat(dealCheckerInputs.financingCosts) || 0;
+                const salePrice = parseFloat(dealCheckerInputs.targetSalePrice) || 0;
+                const equity = parseFloat(dealCheckerInputs.equityRequired) || 0;
+                const months = dealCheckerInputs.holdingPeriodMonths || 18;
+                
+                const totalCost = acquisition + construction + soft + financing;
+                const grossProfit = salePrice - totalCost;
+                const sellingCosts = salePrice * 0.06; // 6% selling costs
+                const netProfit = grossProfit - sellingCosts;
+                const profitMargin = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
+                const moic = equity > 0 ? (equity + netProfit) / equity : 0;
+                
+                // IRR calculation (simplified annualized)
+                const years = months / 12;
+                const irr = equity > 0 && years > 0 ? (Math.pow((equity + netProfit) / equity, 1/years) - 1) * 100 : 0;
+                
+                // Cash on cash (annualized)
+                const annualReturn = netProfit / years;
+                const cashOnCash = equity > 0 ? (annualReturn / equity) * 100 : 0;
+
+                // Calculate Deal Score (0-100)
+                const getMetricScore = (value, min, target, excellent) => {
+                  if (value >= excellent) return 100;
+                  if (value >= target) return 70 + ((value - target) / (excellent - target)) * 30;
+                  if (value >= min) return 40 + ((value - min) / (target - min)) * 30;
+                  if (value > 0) return (value / min) * 40;
+                  return 0;
+                };
+
+                const moicScore = getMetricScore(moic, scoreSettings.moicMin, scoreSettings.moicTarget, scoreSettings.moicExcellent);
+                const irrScore = getMetricScore(irr, scoreSettings.irrMin, scoreSettings.irrTarget, scoreSettings.irrExcellent);
+                const marginScore = getMetricScore(profitMargin, scoreSettings.profitMarginMin, scoreSettings.profitMarginTarget, scoreSettings.profitMarginExcellent);
+                
+                const dealScore = Math.round((moicScore * 0.35) + (irrScore * 0.35) + (marginScore * 0.30));
+                
+                const getScoreColor = (score) => {
+                  if (score >= 80) return 'text-emerald-500';
+                  if (score >= 60) return 'text-amber-500';
+                  if (score >= 40) return 'text-orange-500';
+                  return 'text-rose-500';
+                };
+                
+                const getScoreLabel = (score) => {
+                  if (score >= 80) return 'Excellent';
+                  if (score >= 60) return 'Good';
+                  if (score >= 40) return 'Fair';
+                  return 'Poor';
+                };
+
+                const formatCurrency = (val) => val ? '$' + val.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '-';
+                const formatPercent = (val) => val ? val.toFixed(1) + '%' : '-';
+
+                return (
+                  <div className={`${theme.bgCard} rounded-xl p-6 shadow-sm border ${theme.border}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className={`font-semibold ${theme.text}`}>Deal Analysis</h3>
+                      {totalCost > 0 && (
+                        <div className="text-center">
+                          <div className={`text-3xl font-bold ${getScoreColor(dealScore)}`}>{dealScore}</div>
+                          <div className={`text-xs ${theme.textMuted}`}>{getScoreLabel(dealScore)} Deal</div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {totalCost > 0 ? (
+                      <div className="space-y-6">
+                        {/* Score Breakdown */}
+                        <div className={`p-4 rounded-lg ${theme.bgMuted}`}>
+                          <div className="text-xs font-medium ${theme.textMuted} mb-2">SCORE BREAKDOWN</div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-sm ${theme.text}`}>MOIC ({moic.toFixed(2)}x)</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                                  <div className={`h-full ${moicScore >= 70 ? 'bg-emerald-500' : moicScore >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{width: `${moicScore}%`}} />
+                                </div>
+                                <span className="text-xs w-8">{Math.round(moicScore)}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className={`text-sm ${theme.text}`}>IRR ({formatPercent(irr)})</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                                  <div className={`h-full ${irrScore >= 70 ? 'bg-emerald-500' : irrScore >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{width: `${irrScore}%`}} />
+                                </div>
+                                <span className="text-xs w-8">{Math.round(irrScore)}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className={`text-sm ${theme.text}`}>Margin ({formatPercent(profitMargin)})</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                                  <div className={`h-full ${marginScore >= 70 ? 'bg-emerald-500' : marginScore >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{width: `${marginScore}%`}} />
+                                </div>
+                                <span className="text-xs w-8">{Math.round(marginScore)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Key Metrics */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className={`p-3 rounded-lg ${theme.bgMuted}`}>
+                            <div className={`text-xs ${theme.textMuted}`}>Total Project Cost</div>
+                            <div className={`text-lg font-semibold ${theme.text}`}>{formatCurrency(totalCost)}</div>
+                          </div>
+                          <div className={`p-3 rounded-lg ${theme.bgMuted}`}>
+                            <div className={`text-xs ${theme.textMuted}`}>Net Profit</div>
+                            <div className={`text-lg font-semibold ${netProfit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{formatCurrency(netProfit)}</div>
+                          </div>
+                          <div className={`p-3 rounded-lg ${theme.bgMuted}`}>
+                            <div className={`text-xs ${theme.textMuted}`}>MOIC</div>
+                            <div className={`text-lg font-semibold ${moic >= scoreSettings.moicTarget ? 'text-emerald-500' : moic >= scoreSettings.moicMin ? 'text-amber-500' : 'text-rose-500'}`}>{moic.toFixed(2)}x</div>
+                          </div>
+                          <div className={`p-3 rounded-lg ${theme.bgMuted}`}>
+                            <div className={`text-xs ${theme.textMuted}`}>IRR</div>
+                            <div className={`text-lg font-semibold ${irr >= scoreSettings.irrTarget ? 'text-emerald-500' : irr >= scoreSettings.irrMin ? 'text-amber-500' : 'text-rose-500'}`}>{formatPercent(irr)}</div>
+                          </div>
+                          <div className={`p-3 rounded-lg ${theme.bgMuted}`}>
+                            <div className={`text-xs ${theme.textMuted}`}>Profit Margin</div>
+                            <div className={`text-lg font-semibold ${profitMargin >= scoreSettings.profitMarginTarget ? 'text-emerald-500' : profitMargin >= scoreSettings.profitMarginMin ? 'text-amber-500' : 'text-rose-500'}`}>{formatPercent(profitMargin)}</div>
+                          </div>
+                          <div className={`p-3 rounded-lg ${theme.bgMuted}`}>
+                            <div className={`text-xs ${theme.textMuted}`}>Cash-on-Cash</div>
+                            <div className={`text-lg font-semibold ${theme.text}`}>{formatPercent(cashOnCash)}</div>
+                          </div>
+                        </div>
+
+                        {/* Cost Breakdown */}
+                        <div>
+                          <div className={`text-xs font-medium ${theme.textMuted} mb-2`}>COST BREAKDOWN</div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className={theme.textMuted}>Acquisition</span>
+                              <span className={theme.text}>{formatCurrency(acquisition)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className={theme.textMuted}>Construction</span>
+                              <span className={theme.text}>{formatCurrency(construction)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className={theme.textMuted}>Soft Costs</span>
+                              <span className={theme.text}>{formatCurrency(soft)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className={theme.textMuted}>Financing</span>
+                              <span className={theme.text}>{formatCurrency(financing)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className={theme.textMuted}>Selling Costs (6%)</span>
+                              <span className={theme.text}>{formatCurrency(sellingCosts)}</span>
+                            </div>
+                            <div className={`flex justify-between text-sm font-medium pt-2 border-t ${theme.border}`}>
+                              <span className={theme.text}>Total All-in</span>
+                              <span className={theme.text}>{formatCurrency(totalCost + sellingCosts)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`text-center py-12 ${theme.textMuted}`}>
+                        <Icons.Calculator />
+                        <p className="mt-2">Enter project details to see analysis</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
