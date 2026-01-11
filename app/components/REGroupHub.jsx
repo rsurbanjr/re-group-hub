@@ -1380,7 +1380,6 @@ Guidelines:
   };
 
   const typeColors = {
-    const typeColors = {
     'Client': { bg: '#ecfeff', text: '#0891b2' },
     'Buyer': { bg: '#ecfdf5', text: '#059669' },
     'Seller': { bg: '#fef3c7', text: '#d97706' },
