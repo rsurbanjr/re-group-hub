@@ -9,15 +9,15 @@
   <!-- Rounded square background -->
   <rect x="0" y="0" width="32" height="32" rx="6" fill="url(#favGradient)"/>
   
-  <!-- House roof -->
-  <path d="M16 6 L6 14 L6 26 L26 26 L26 14 L16 6 Z" fill="white" opacity="0.95"/>
+  <!-- Simple house silhouette -->
+  <path d="M16 7 L7 14 L7 25 L25 25 L25 14 Z" fill="white"/>
   
-  <!-- Door -->
-  <rect x="13" y="18" width="6" height="8" rx="1" fill="#0891b2"/>
+  <!-- Smaller rising graph line -->
+  <path d="M11 20 L14 18 L17 19 L21 16" stroke="#0891b2" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
   
-  <!-- Rising graph line -->
-  <path d="M9 22 L13 19 L19 20 L23 15" stroke="#0891b2" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  
-  <!-- Graph endpoint dot -->
-  <circle cx="23" cy="15" r="2" fill="#0891b2"/>
+  <!-- Graph dots -->
+  <circle cx="11" cy="20" r="1.5" fill="#0891b2"/>
+  <circle cx="14" cy="18" r="1.5" fill="#0891b2"/>
+  <circle cx="17" cy="19" r="1.5" fill="#0891b2"/>
+  <circle cx="21" cy="16" r="1.5" fill="#0891b2"/>
 </svg>

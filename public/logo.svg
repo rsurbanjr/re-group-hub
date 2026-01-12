@@ -22,10 +22,11 @@
   </g>
   
   <!-- Text -->
-  <text x="50" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" fill="#0f172a">
+  <text x="50" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700">
     <tspan fill="#0891b2">RE</tspan>
     <tspan fill="#64748b" font-weight="300"> | </tspan>
-    <tspan fill="#0f172a">Group Hub</tspan>
+    <tspan fill="#0891b2">Group </tspan>
+    <tspan fill="#0f172a">Hub</tspan>
   </text>
   
   <!-- Tagline -->
