@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4"/>
+      <stop offset="100%" style="stop-color:#0891b2"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon - House with graph line -->
+  <g transform="translate(5, 5)">
+    <!-- House shape -->
+    <path d="M20 12 L4 24 L4 40 L36 40 L36 24 L20 12 Z" fill="url(#logoGradient)" />
+    <!-- Door -->
+    <rect x="16" y="28" width="8" height="12" fill="#0e7490"/>
+    <!-- Rising graph line inside house -->
+    <path d="M10 34 L16 30 L24 32 L30 26" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Graph dots -->
+    <circle cx="10" cy="34" r="2" fill="white"/>
+    <circle cx="16" cy="30" r="2" fill="white"/>
+    <circle cx="24" cy="32" r="2" fill="white"/>
+    <circle cx="30" cy="26" r="2" fill="white"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="50" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" fill="#0f172a">
+    <tspan fill="#0891b2">RE</tspan>
+    <tspan fill="#64748b" font-weight="300"> | </tspan>
+    <tspan fill="#0f172a">Group Hub</tspan>
+  </text>
+  
+  <!-- Tagline -->
+  <text x="50" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#64748b" letter-spacing="1.5">
+    INTELLIGENCE PLATFORM
+  </text>
+</svg>
