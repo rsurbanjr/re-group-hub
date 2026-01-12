@@ -271,6 +271,7 @@ export default function REGroupHub({ user }) {
   
   // User profile
   const [userProfile, setUserProfile] = useState({ displayName: '', company: '', phone: '', title: '' });
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   
   // Modal states
   const [showModal, setShowModal] = useState(null);
@@ -425,8 +426,11 @@ export default function REGroupHub({ user }) {
           setTemplates(toCamelCase(templatesRes.data || []));
           
           // Load user settings
+          console.log('📋 Settings from Supabase:', settingsRes.data);
           if (settingsRes.data?.settings) {
             const s = settingsRes.data.settings;
+            console.log('📋 Parsed settings:', s);
+            console.log('📋 userProfile in settings:', s.userProfile);
             if (s.darkMode !== undefined) setDarkMode(s.darkMode);
             if (s.goals) setGoals(s.goals);
             if (s.quizScores) setQuizScores(s.quizScores);
@@ -436,6 +440,10 @@ export default function REGroupHub({ user }) {
             if (s.totalPoints !== undefined) setTotalPoints(s.totalPoints);
             if (s.currentStreak !== undefined) setCurrentStreak(s.currentStreak);
             if (s.userProfile) setUserProfile(s.userProfile);
+            setSettingsLoaded(true);
+          } else {
+            console.log('⚠️ No settings found for user:', user.id);
+            setSettingsLoaded(true); // Still mark as loaded so we can save new settings
           }
           
           // Check onboarding
@@ -489,7 +497,7 @@ export default function REGroupHub({ user }) {
 
   // Save settings to Supabase (debounced)
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !settingsLoaded) return;
     
     const saveSettings = async () => {
       const settings = {
@@ -516,21 +524,30 @@ export default function REGroupHub({ user }) {
       
       // Save to Supabase if configured and user is logged in
       if (isSupabaseConfigured() && user?.id) {
+        console.log('💾 Saving settings to Supabase for user:', user.id);
+        console.log('💾 userProfile being saved:', userProfile);
         try {
-          await supabase.from('user_settings').upsert({
+          const { error } = await supabase.from('user_settings').upsert({
             user_id: user.id,
             settings,
             updated_at: new Date().toISOString()
-          });
+          }, { onConflict: 'user_id' });
+          if (error) {
+            console.error('❌ Supabase upsert error:', error);
+          } else {
+            console.log('✅ Settings saved successfully');
+          }
         } catch (err) {
           console.error('Error saving settings to Supabase:', err);
         }
+      } else {
+        console.log('⚠️ Not saving to Supabase - user?.id:', user?.id);
       }
     };
     
     const timer = setTimeout(saveSettings, 1000);
     return () => clearTimeout(timer);
-  }, [isLoading, darkMode, goals, quizScores, completedDailyHabits, completedWeeklyTasks, masteredProperties, totalPoints, currentStreak, userProfile, user]);
+  }, [isLoading, settingsLoaded, darkMode, goals, quizScores, completedDailyHabits, completedWeeklyTasks, masteredProperties, totalPoints, currentStreak, userProfile, user]);
 
   // Supabase CRUD helpers
   const dbInsert = async (table, record) => {
