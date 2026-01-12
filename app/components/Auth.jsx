@@ -46,15 +46,21 @@ export default function Auth() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-xl flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
+            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/25">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 32 32" fill="none">
+                <path d="M16 6 L6 14 L6 26 L26 26 L26 14 L16 6 Z" fill="white" opacity="0.95"/>
+                <rect x="13" y="18" width="6" height="8" rx="1" fill="#0891b2"/>
+                <path d="M9 22 L13 19 L19 20 L23 15" stroke="#0891b2" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="23" cy="15" r="2" fill="#0891b2"/>
               </svg>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">RE | Group Hub</h1>
-              <p className="text-cyan-400 text-sm">Intelligence Platform</p>
+            <div className="text-left">
+              <h1 className="text-2xl font-bold text-white">
+                <span className="text-cyan-400">RE</span>
+                <span className="text-slate-500 font-light"> | </span>
+                <span>Group Hub</span>
+              </h1>
+              <p className="text-cyan-400/80 text-xs tracking-widest uppercase">Intelligence Platform</p>
             </div>
           </div>
         </div>
