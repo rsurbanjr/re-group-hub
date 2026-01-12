@@ -373,7 +373,7 @@ export default function REGroupHub({ user }) {
   // AI Assistant state
   const [showAssistant, setShowAssistant] = useState(false);
   const [assistantMessages, setAssistantMessages] = useState([
-    { role: 'assistant', content: "Hi Roxanna! 👋 I'm your AI assistant. I can help you with:\n\n• **Deal coaching** - strategies for moving deals forward\n• **Follow-up suggestions** - who to contact and when\n• **Email drafting** - professional outreach based on your templates\n• **Pipeline analysis** - insights on your performance\n\nWhat would you like help with?" }
+    { role: 'assistant', content: "Hi there! 👋 I'm your AI assistant. I can help you with:\n\n• **Deal coaching** - strategies for moving deals forward\n• **Follow-up suggestions** - who to contact and when\n• **Email drafting** - professional outreach based on your templates\n• **Pipeline analysis** - insights on your performance\n\nWhat would you like help with?" }
   ]);
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantLoading, setAssistantLoading] = useState(false);
@@ -459,11 +459,11 @@ export default function REGroupHub({ user }) {
       setActivities(loadFromStorage(STORAGE_KEYS.activities, []));
       setProperties(loadFromStorage(STORAGE_KEYS.properties, []));
       setTemplates(loadFromStorage(STORAGE_KEYS.templates, [
-        { id: 1, name: 'Initial Outreach', category: 'Email', subject: 'Luxury Real Estate Opportunity', body: 'Hi [Name],\n\nI hope this message finds you well. I wanted to reach out regarding some exceptional properties in [Neighborhood] that align with your preferences.\n\nWould you be available for a brief call this week to discuss?\n\nBest regards,\nRoxanna Urban\nOne Sotheby\'s International Realty' },
-        { id: 2, name: 'Listing Follow-up', category: 'Email', subject: 'Following Up on [Property]', body: 'Hi [Name],\n\nI wanted to follow up on your interest in [Property]. The property is still available and I\'d love to schedule a private showing at your convenience.\n\nPlease let me know what times work best for you.\n\nBest,\nRoxanna' },
-        { id: 3, name: 'Market Update', category: 'Email', subject: '[Neighborhood] Market Update', body: 'Hi [Name],\n\nI wanted to share some recent market activity in [Neighborhood]:\n\n• New listings: [X]\n• Recent sales: [X]\n• Average price/sqft: $[X]\n\nLet me know if you\'d like to discuss any opportunities.\n\nBest,\nRoxanna' },
-        { id: 4, name: 'Quick Check-in', category: 'SMS', subject: '', body: 'Hi [Name]! Just checking in to see if you\'re still interested in [Neighborhood]. Any updates on your timeline? - Roxanna' },
-        { id: 5, name: 'Showing Confirmation', category: 'SMS', subject: '', body: 'Hi [Name], confirming our showing tomorrow at [Time] for [Property]. Looking forward to seeing you! - Roxanna' },
+        { id: 1, name: 'Initial Outreach', category: 'Email', subject: 'Luxury Real Estate Opportunity', body: 'Hi [Name],\n\nI hope this message finds you well. I wanted to reach out regarding some exceptional properties in [Neighborhood] that align with your preferences.\n\nWould you be available for a brief call this week to discuss?\n\nBest regards,\n[Your Name]\n[Your Company]' },
+        { id: 2, name: 'Listing Follow-up', category: 'Email', subject: 'Following Up on [Property]', body: 'Hi [Name],\n\nI wanted to follow up on your interest in [Property]. The property is still available and I\'d love to schedule a private showing at your convenience.\n\nPlease let me know what times work best for you.\n\nBest,\n[Your Name]' },
+        { id: 3, name: 'Market Update', category: 'Email', subject: '[Neighborhood] Market Update', body: 'Hi [Name],\n\nI wanted to share some recent market activity in [Neighborhood]:\n\n• New listings: [X]\n• Recent sales: [X]\n• Average price/sqft: $[X]\n\nLet me know if you\'d like to discuss any opportunities.\n\nBest,\n[Your Name]' },
+        { id: 4, name: 'Quick Check-in', category: 'SMS', subject: '', body: 'Hi [Name]! Just checking in to see if you\'re still interested in [Neighborhood]. Any updates on your timeline? - [Your Name]' },
+        { id: 5, name: 'Showing Confirmation', category: 'SMS', subject: '', body: 'Hi [Name], confirming our showing tomorrow at [Time] for [Property]. Looking forward to seeing you! - [Your Name]' },
       ]));
       setGoals(loadFromStorage(STORAGE_KEYS.goals, goals));
       setQuizScores(loadFromStorage(STORAGE_KEYS.quizScores, {}));
@@ -479,7 +479,7 @@ export default function REGroupHub({ user }) {
     }
     
     loadData();
-  }, []);
+  }, [user]);
 
   // Save settings to Supabase (debounced)
   useEffect(() => {
@@ -1232,14 +1232,16 @@ export default function REGroupHub({ user }) {
       templates: templates.map(t => ({ name: t.name, category: t.category })),
     };
     
-    const systemPrompt = `You are an AI assistant for Roxanna Urban, a luxury real estate agent in Miami specializing in ultra-high-end waterfront properties in Gables Estates, Cocoplum, Old Cutler Bay, and Coral Gables.
+    const agentName = userProfile.displayName || userName;
+    const agentCompany = userProfile.company || 'a luxury real estate brokerage';
+    const systemPrompt = `You are an AI assistant for ${agentName}, a luxury real estate professional at ${agentCompany} specializing in ultra-high-end waterfront properties.
 
-Your role is to help Roxanna:
+Your role is to help ${agentName}:
 1. Move deals forward with strategic coaching
 2. Suggest follow-ups based on contact history
 3. Draft professional emails and messages
-4. Analyze her pipeline and provide insights
-5. Help prioritize her day
+4. Analyze their pipeline and provide insights
+5. Help prioritize their day
 
 Current context:
 ${JSON.stringify(context, null, 2)}
