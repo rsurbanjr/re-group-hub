@@ -381,6 +381,12 @@ export default function REGroupHub({ user }) {
   // Load data from Supabase or localStorage on mount
   useEffect(() => {
     async function loadData() {
+      // Don't load if no user (logged out)
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      
       setIsLoading(true);
       
       if (isSupabaseConfigured()) {
@@ -401,7 +407,7 @@ export default function REGroupHub({ user }) {
             supabase.from('activities').select('*').order('date', { ascending: false }),
             supabase.from('properties').select('*').order('created_at', { ascending: false }),
             supabase.from('templates').select('*').order('name', { ascending: true }),
-            supabase.from('user_settings').select('*').eq('user_id', user?.id).maybeSingle()
+            supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle()
           ]);
 
           if (contactsRes.error) throw contactsRes.error;
@@ -508,11 +514,11 @@ export default function REGroupHub({ user }) {
       saveToStorage(STORAGE_KEYS.totalPoints, totalPoints);
       saveToStorage(STORAGE_KEYS.currentStreak, currentStreak);
       
-      // Save to Supabase if configured
-      if (isSupabaseConfigured()) {
+      // Save to Supabase if configured and user is logged in
+      if (isSupabaseConfigured() && user?.id) {
         try {
           await supabase.from('user_settings').upsert({
-            user_id: user?.id || 'default',
+            user_id: user.id,
             settings,
             updated_at: new Date().toISOString()
           });
