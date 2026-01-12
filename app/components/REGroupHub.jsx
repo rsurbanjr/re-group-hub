@@ -72,7 +72,7 @@ const Icons = {
 
 // Colors
 const colors = {
-  primary: '#0891b2',
+  primary: '#0e7490',
   primaryDark: '#0e7490',
   success: '#10b981',
   warning: '#f59e0b',
@@ -1423,7 +1423,7 @@ Guidelines:
   };
 
   const typeColors = {
-    'Client': { bg: '#ecfeff', text: '#0891b2' },
+    'Client': { bg: '#ecfeff', text: '#0e7490' },
     'Buyer': { bg: '#ecfdf5', text: '#059669' },
     'Seller': { bg: '#fef3c7', text: '#d97706' },
     'Developer': { bg: '#f3e8ff', text: '#9333ea' },
@@ -1449,23 +1449,7 @@ Guidelines:
     return (
       <div className={`min-h-screen ${theme.bg} flex items-center justify-center`}>
         <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 mx-auto mb-4 animate-pulse">
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 40 45" fill="none">
-              <path d="M20 12 L4 24 L4 40 L36 40 L36 24 Z" fill="white"/>
-              <rect x="16" y="28" width="8" height="12" fill="#0891b2"/>
-              <path d="M10 34 L16 30 L24 32 L30 26" stroke="#0891b2" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="10" cy="34" r="2" fill="#0891b2"/>
-              <circle cx="16" cy="30" r="2" fill="#0891b2"/>
-              <circle cx="24" cy="32" r="2" fill="#0891b2"/>
-              <circle cx="30" cy="26" r="2" fill="#0891b2"/>
-            </svg>
-          </div>
-          <h1 className={`text-xl font-semibold mb-2`}>
-            <span className="text-cyan-500">RE</span>
-            <span className={theme.textMuted}> | </span>
-            <span className="text-cyan-500">Group </span>
-            <span className={theme.text}>Hub</span>
-          </h1>
+          <img src="/logo.svg" alt="RE | Group Hub" className="h-12 mx-auto mb-4 animate-pulse" />
           <p className={theme.textMuted}>Loading your data...</p>
           <div className="mt-4 flex justify-center gap-1">
             <div className="w-2 h-2 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -1492,26 +1476,10 @@ Guidelines:
       <header className={`${theme.bgHeader} backdrop-blur border-b ${theme.border} sticky top-0 z-50 transition-colors duration-300`}>
         <div className="h-1 bg-gradient-to-r from-cyan-500 via-violet-500 to-rose-500" />
         <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 40 45" fill="none">
-                <path d="M20 12 L4 24 L4 40 L36 40 L36 24 Z" fill="white"/>
-                <rect x="16" y="28" width="8" height="12" fill="#0891b2"/>
-                <path d="M10 34 L16 30 L24 32 L30 26" stroke="#0891b2" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="10" cy="34" r="2" fill="#0891b2"/>
-                <circle cx="16" cy="30" r="2" fill="#0891b2"/>
-                <circle cx="24" cy="32" r="2" fill="#0891b2"/>
-                <circle cx="30" cy="26" r="2" fill="#0891b2"/>
-              </svg>
-            </div>
+          <div className="flex items-center gap-4">
+            <img src="/logo.svg" alt="RE | Group Hub" className="h-10" />
             <div>
               <h1 className={`text-lg font-semibold ${theme.text}`}>{greeting}, {userName}!</h1>
-              <p className={theme.textMuted}>
-                <span className="text-cyan-500">RE</span>
-                <span> | </span>
-                <span className="text-cyan-500">Group</span>
-                <span className={theme.text}> Hub</span>
-              </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
