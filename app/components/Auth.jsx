@@ -54,7 +54,6 @@ export default function Auth() {
           <h2 className="text-xl font-semibold text-slate-800 mb-6 text-center">
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </h2>
-          </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
