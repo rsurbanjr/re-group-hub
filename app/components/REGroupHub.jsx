@@ -3971,9 +3971,43 @@ Guidelines:
                 </div>
               </div>
               
-              <div className={`text-xs ${theme.textMuted} text-center`}>
-                Changes are saved automatically
-              </div>
+              <button
+                onClick={async () => {
+                  if (isSupabaseConfigured() && user?.id) {
+                    const settings = {
+                      darkMode,
+                      goals,
+                      quizScores,
+                      completedDailyHabits,
+                      completedWeeklyTasks,
+                      masteredProperties,
+                      totalPoints,
+                      currentStreak,
+                      userProfile
+                    };
+                    try {
+                      const { error } = await supabase.from('user_settings').upsert({
+                        user_id: user.id,
+                        settings,
+                        updated_at: new Date().toISOString()
+                      }, { onConflict: 'user_id' });
+                      if (error) {
+                        console.error('❌ Save error:', error);
+                        alert('Error saving settings: ' + error.message);
+                      } else {
+                        console.log('✅ Settings saved manually');
+                        alert('Settings saved!');
+                      }
+                    } catch (err) {
+                      console.error('Error:', err);
+                      alert('Error saving settings');
+                    }
+                  }
+                }}
+                className="w-full px-4 py-2.5 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors text-sm font-medium"
+              >
+                Save Settings
+              </button>
               
               {user && (
                 <button
