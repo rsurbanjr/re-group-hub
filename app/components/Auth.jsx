@@ -1,4 +1,5 @@
 "use client"
+// Version: 2026-01-12-v2 - New logo with house, door, graph line and dots
 
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
@@ -45,28 +46,7 @@ export default function Auth() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/25">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 40 45" fill="none">
-                <path d="M20 12 L4 24 L4 40 L36 40 L36 24 Z" fill="white"/>
-                <rect x="16" y="28" width="8" height="12" fill="#0891b2"/>
-                <path d="M10 34 L16 30 L24 32 L30 26" stroke="#0891b2" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="10" cy="34" r="2" fill="#0891b2"/>
-                <circle cx="16" cy="30" r="2" fill="#0891b2"/>
-                <circle cx="24" cy="32" r="2" fill="#0891b2"/>
-                <circle cx="30" cy="26" r="2" fill="#0891b2"/>
-              </svg>
-            </div>
-            <div className="text-left">
-              <h1 className="text-2xl font-bold">
-                <span className="text-cyan-400">RE</span>
-                <span className="text-slate-500 font-light"> | </span>
-                <span className="text-cyan-400">Group </span>
-                <span className="text-white">Hub</span>
-              </h1>
-              <p className="text-cyan-400/80 text-xs tracking-widest uppercase">Intelligence Platform</p>
-            </div>
-          </div>
+          <img src="/logo.svg" alt="RE | Group Hub" className="h-12 mx-auto" />
         </div>
 
         {/* Auth Card */}
