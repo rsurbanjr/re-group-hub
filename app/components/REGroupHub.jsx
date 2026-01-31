@@ -297,7 +297,7 @@ export default function REGroupHub({ user }) {
   const [editingDeal, setEditingDeal] = useState(null);
 
   // Mastery state
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState('Gables Estates');
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState('');
   const [masteryView, setMasteryView] = useState('overview');
   const [completedDailyHabits, setCompletedDailyHabits] = useState({});
   const [completedWeeklyTasks, setCompletedWeeklyTasks] = useState({});
@@ -308,6 +308,13 @@ export default function REGroupHub({ user }) {
   const [totalPoints, setTotalPoints] = useState(0);
   const [showHelp, setShowHelp] = useState(false);
   const [helpSection, setHelpSection] = useState('getting-started');
+  
+  // Custom neighborhoods for Mastery
+  const [customNeighborhoods, setCustomNeighborhoods] = useState({});
+  const [loadingNeighborhood, setLoadingNeighborhood] = useState(false);
+  const [showAddNeighborhood, setShowAddNeighborhood] = useState(false);
+  const [newNeighborhoodName, setNewNeighborhoodName] = useState('');
+  const [newNeighborhoodLocation, setNewNeighborhoodLocation] = useState('Miami, FL');
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
@@ -701,7 +708,7 @@ export default function REGroupHub({ user }) {
         try {
           const { error } = await supabase.from('user_settings').upsert({
             user_id: user.id,
-            settings,
+            settings: { ...settings, customNeighborhoods },
             updated_at: new Date().toISOString()
           }, { onConflict: 'user_id' });
           if (error) {
@@ -719,7 +726,105 @@ export default function REGroupHub({ user }) {
     
     const timer = setTimeout(saveSettings, 1000);
     return () => clearTimeout(timer);
-  }, [isLoading, settingsLoaded, darkMode, goals, quizScores, completedDailyHabits, completedWeeklyTasks, masteredProperties, totalPoints, currentStreak, userProfile, user]);
+  }, [isLoading, settingsLoaded, darkMode, goals, quizScores, completedDailyHabits, completedWeeklyTasks, masteredProperties, totalPoints, currentStreak, userProfile, customNeighborhoods, user]);
+
+  // Add custom neighborhood
+  const addNeighborhood = async (name, location = 'Miami, FL') => {
+    if (!name || customNeighborhoods[name]) return;
+    
+    setLoadingNeighborhood(true);
+    try {
+      const response = await fetch('/api/neighborhood', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ neighborhood: name, location })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const data = result.data;
+        // Assign a color based on how many neighborhoods exist
+        const colorOptions = [colors.primary, colors.violet, colors.rose, colors.success, colors.warning, colors.amber];
+        data.color = colorOptions[Object.keys(customNeighborhoods).length % colorOptions.length];
+        
+        setCustomNeighborhoods(prev => ({ ...prev, [name]: data }));
+        setSelectedNeighborhood(name);
+        setShowAddNeighborhood(false);
+        setNewNeighborhoodName('');
+        console.log('✅ Neighborhood added:', name);
+      }
+    } catch (err) {
+      console.error('Error adding neighborhood:', err);
+      alert('Failed to add neighborhood. Please try again.');
+    }
+    setLoadingNeighborhood(false);
+  };
+
+  // Remove custom neighborhood
+  const removeNeighborhood = (name) => {
+    if (confirm(`Remove "${name}" from your mastery list?`)) {
+      setCustomNeighborhoods(prev => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+      // Select first remaining neighborhood or clear
+      const remaining = Object.keys(customNeighborhoods).filter(n => n !== name);
+      setSelectedNeighborhood(remaining[0] || '');
+    }
+  };
+
+  // Get neighborhood details (from custom or use defaults)
+  const getNeighborhoodDetails = (name) => {
+    if (customNeighborhoods[name]) {
+      return customNeighborhoods[name];
+    }
+    // Return default structure
+    return {
+      color: colors.primary,
+      inventory: 0,
+      avgPrice: 0,
+      pricePerSqFt: 0,
+      avgDom: 0,
+      avgLotSize: 'N/A',
+      keyBuilders: [],
+      keyArchitects: [],
+      characteristics: []
+    };
+  };
+
+  // Get quiz questions for neighborhood
+  const getNeighborhoodQuiz = (name) => {
+    if (customNeighborhoods[name]?.quiz) {
+      return customNeighborhoods[name].quiz;
+    }
+    return [];
+  };
+
+  // Load custom neighborhoods from settings
+  useEffect(() => {
+    const stored = localStorage.getItem('regroup_custom_neighborhoods');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setCustomNeighborhoods(parsed);
+        const names = Object.keys(parsed);
+        if (names.length > 0 && !selectedNeighborhood) {
+          setSelectedNeighborhood(names[0]);
+        }
+      } catch (e) {
+        console.error('Error loading neighborhoods:', e);
+      }
+    }
+  }, []);
+
+  // Save custom neighborhoods to localStorage
+  useEffect(() => {
+    if (Object.keys(customNeighborhoods).length > 0) {
+      localStorage.setItem('regroup_custom_neighborhoods', JSON.stringify(customNeighborhoods));
+    }
+  }, [customNeighborhoods]);
 
   // Supabase CRUD helpers
   const dbInsert = async (table, record) => {
@@ -1562,21 +1667,29 @@ Guidelines:
   };
 
   const startQuiz = (neighborhood) => {
+    const quiz = getNeighborhoodQuiz(neighborhood);
+    if (!quiz || quiz.length === 0) {
+      alert('No quiz questions available for this neighborhood yet. Try refreshing the data.');
+      return;
+    }
     setSelectedNeighborhood(neighborhood);
     setQuizState({ active: true, currentQuestion: 0, answers: [], showResults: false });
     setMasteryView('quiz');
   };
 
   const answerQuestion = (answerIndex) => {
+    const quiz = getNeighborhoodQuiz(selectedNeighborhood);
+    if (!quiz || quiz.length === 0) return;
+    
     const newAnswers = [...quizState.answers, answerIndex];
-    if (quizState.currentQuestion < quizQuestions[selectedNeighborhood].length - 1) {
+    if (quizState.currentQuestion < quiz.length - 1) {
       setQuizState({ ...quizState, currentQuestion: quizState.currentQuestion + 1, answers: newAnswers });
     } else {
       // Quiz complete
       const score = newAnswers.reduce((acc, answer, idx) => {
-        return acc + (answer === quizQuestions[selectedNeighborhood][idx].correct ? 1 : 0);
+        return acc + (answer === quiz[idx].correct ? 1 : 0);
       }, 0);
-      const percentage = Math.round((score / quizQuestions[selectedNeighborhood].length) * 100);
+      const percentage = Math.round((score / quiz.length) * 100);
       setQuizScores(prev => ({
         ...prev,
         [selectedNeighborhood]: [...(prev[selectedNeighborhood] || []), { score: percentage, date: new Date().toISOString() }]
@@ -3720,36 +3833,121 @@ Guidelines:
 
             {/* Neighborhood Selector */}
             <div className="flex gap-2 flex-wrap">
-              {['Gables Estates', 'Cocoplum', 'Old Cutler Bay'].map((neighborhood) => {
-                const details = neighborhoodDetails[neighborhood];
-                const progress = getOverallMasteryProgress(neighborhood);
-                return (
+              {Object.keys(customNeighborhoods).length === 0 ? (
+                <div className={`flex-1 p-6 rounded-xl border-2 border-dashed ${theme.border} text-center`}>
+                  <p className={`${theme.textMuted} mb-3`}>No neighborhoods added yet</p>
                   <button
-                    key={neighborhood}
-                    onClick={() => { setSelectedNeighborhood(neighborhood); setMasteryView('overview'); }}
-                    className={`flex-1 min-w-48 p-4 rounded-xl border transition-all ${
-                      selectedNeighborhood === neighborhood 
-                        ? `border-2 shadow-lg` 
-                        : `${theme.border} ${theme.bgCard}`
-                    }`}
-                    style={{ 
-                      borderColor: selectedNeighborhood === neighborhood ? details.color : undefined,
-                      backgroundColor: selectedNeighborhood === neighborhood ? (darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)') : undefined
-                    }}
+                    onClick={() => setShowAddNeighborhood(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg font-medium hover:from-cyan-600 hover:to-cyan-700"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`font-semibold ${theme.text}`}>{neighborhood}</span>
-                      <span className="text-lg font-bold" style={{ color: details.color }}>{progress}%</span>
-                    </div>
-                    <div className={`h-2 ${darkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-full overflow-hidden`}>
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: details.color }} />
-                    </div>
+                    + Add Your First Neighborhood
                   </button>
-                );
-              })}
+                </div>
+              ) : (
+                <>
+                  {Object.entries(customNeighborhoods).map(([neighborhood, details]) => {
+                    const progress = getOverallMasteryProgress(neighborhood);
+                    return (
+                      <button
+                        key={neighborhood}
+                        onClick={() => { setSelectedNeighborhood(neighborhood); setMasteryView('overview'); }}
+                        className={`flex-1 min-w-48 p-4 rounded-xl border transition-all relative group ${
+                          selectedNeighborhood === neighborhood 
+                            ? `border-2 shadow-lg` 
+                            : `${theme.border} ${theme.bgCard}`
+                        }`}
+                        style={{ 
+                          borderColor: selectedNeighborhood === neighborhood ? details.color : undefined,
+                          backgroundColor: selectedNeighborhood === neighborhood ? (darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)') : undefined
+                        }}
+                      >
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeNeighborhood(neighborhood); }}
+                          className="absolute top-2 right-2 p-1 rounded-full bg-rose-500/20 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/30"
+                          title="Remove neighborhood"
+                        >
+                          <Icons.X />
+                        </button>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`font-semibold ${theme.text}`}>{neighborhood}</span>
+                          <span className="text-lg font-bold" style={{ color: details.color }}>{progress}%</span>
+                        </div>
+                        <div className={`h-2 ${darkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-full overflow-hidden`}>
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: details.color }} />
+                        </div>
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setShowAddNeighborhood(true)}
+                    className={`min-w-32 p-4 rounded-xl border-2 border-dashed ${theme.border} ${theme.textMuted} hover:border-cyan-400 hover:text-cyan-400 transition-all flex flex-col items-center justify-center gap-1`}
+                  >
+                    <Icons.Plus />
+                    <span className="text-sm">Add</span>
+                  </button>
+                </>
+              )}
             </div>
 
-            {/* Sub-navigation */}
+            {/* Add Neighborhood Modal */}
+            {showAddNeighborhood && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAddNeighborhood(false)}>
+                <div className={`${theme.bgCard} rounded-xl w-full max-w-md`} onClick={e => e.stopPropagation()}>
+                  <div className={`p-4 border-b ${theme.border} flex justify-between items-center`}>
+                    <h3 className={`font-semibold ${theme.text}`}>Add Neighborhood to Master</h3>
+                    <button onClick={() => setShowAddNeighborhood(false)} className={`p-1 ${theme.bgMuted} rounded ${theme.textMuted}`}><Icons.X /></button>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <div>
+                      <label className={`block text-sm ${theme.textMuted} mb-1`}>Neighborhood Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g., Coral Gables, Brickell, Star Island..." 
+                        className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                        value={newNeighborhoodName}
+                        onChange={e => setNewNeighborhoodName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm ${theme.textMuted} mb-1`}>Location (City, State)</label>
+                      <input 
+                        type="text" 
+                        placeholder="Miami, FL" 
+                        className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                        value={newNeighborhoodLocation}
+                        onChange={e => setNewNeighborhoodLocation(e.target.value)}
+                      />
+                    </div>
+                    <p className={`text-xs ${theme.textMuted}`}>
+                      We'll fetch real market data, key builders, architects, and generate quiz questions for this neighborhood.
+                    </p>
+                  </div>
+                  <div className={`p-4 border-t ${theme.border} flex justify-end gap-2`}>
+                    <button onClick={() => setShowAddNeighborhood(false)} className={`px-4 py-2 ${theme.textMuted} ${theme.bgMuted} rounded-lg`}>Cancel</button>
+                    <button 
+                      onClick={() => addNeighborhood(newNeighborhoodName, newNeighborhoodLocation)}
+                      disabled={!newNeighborhoodName || loadingNeighborhood}
+                      className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {loadingNeighborhood ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Fetching Data...
+                        </>
+                      ) : (
+                        'Add Neighborhood'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-navigation - only show if neighborhood selected */}
+            {selectedNeighborhood && (
             <div className={`${theme.bgCard} rounded-xl border ${theme.border} p-1 flex gap-1 flex-wrap`}>
               {[
                 { id: 'overview', label: 'Overview', icon: '📊' },
@@ -3981,109 +4179,122 @@ Guidelines:
             )}
 
             {/* QUIZ VIEW */}
-            {masteryView === 'quiz' && (
+            {masteryView === 'quiz' && selectedNeighborhood && (
               <div className={`${theme.bgCard} rounded-xl border ${theme.border} p-6`}>
-                {!quizState.active ? (
-                  // Quiz Start Screen
-                  <div className="text-center py-8">
-                    <span className="text-6xl mb-4 block">🧠</span>
-                    <h3 className={`text-xl font-semibold ${theme.text} mb-2`}>{selectedNeighborhood} Knowledge Quiz</h3>
-                    <p className={`${theme.textMuted} mb-6`}>{quizQuestions[selectedNeighborhood].length} questions • Earn 5 points per correct answer</p>
-                    <button
-                      onClick={() => startQuiz(selectedNeighborhood)}
-                      className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl font-medium hover:from-cyan-600 hover:to-cyan-700 shadow-lg"
-                    >
-                      Start Quiz
-                    </button>
-                    {(quizScores[selectedNeighborhood] || []).length > 0 && (
-                      <p className={`mt-4 ${theme.textMuted}`}>
-                        Your average: <span className="font-bold text-cyan-500">{getQuizAverage(selectedNeighborhood)}%</span>
-                      </p>
-                    )}
-                  </div>
-                ) : quizState.showResults ? (
-                  // Quiz Results
-                  <div className="text-center py-8">
-                    {(() => {
-                      const correctCount = quizState.answers.reduce((acc, answer, idx) => {
-                        return acc + (answer === quizQuestions[selectedNeighborhood][idx].correct ? 1 : 0);
-                      }, 0);
-                      const percentage = Math.round((correctCount / quizQuestions[selectedNeighborhood].length) * 100);
-                      return (
-                        <>
-                          <span className="text-6xl mb-4 block">{percentage >= 80 ? '🎉' : percentage >= 60 ? '👍' : '📚'}</span>
-                          <h3 className={`text-xl font-semibold ${theme.text} mb-2`}>Quiz Complete!</h3>
-                          <p className={`text-4xl font-bold mb-2 ${percentage >= 80 ? 'text-emerald-400' : percentage >= 60 ? 'text-amber-400' : 'text-rose-400'}`}>
-                            {percentage}%
-                          </p>
-                          <p className={theme.textMuted}>{correctCount} of {quizQuestions[selectedNeighborhood].length} correct • +{correctCount * 5} points earned</p>
-                          
-                          {/* Review Answers */}
-                          <div className="mt-6 text-left space-y-3">
-                            {quizQuestions[selectedNeighborhood].map((q, idx) => {
-                              const isCorrect = quizState.answers[idx] === q.correct;
-                              return (
-                                <div key={q.id} className={`p-3 rounded-lg ${isCorrect ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-rose-500/10 border border-rose-500/30'}`}>
-                                  <p className={`text-sm ${theme.text}`}>{q.question}</p>
-                                  <p className={`text-xs mt-1 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                    {isCorrect ? '✓ Correct' : `✗ Your answer: ${q.options[quizState.answers[idx]]} | Correct: ${q.options[q.correct]}`}
-                                  </p>
-                                </div>
-                              );
-                            })}
-                          </div>
+                {(() => {
+                  const quiz = getNeighborhoodQuiz(selectedNeighborhood);
+                  if (!quiz || quiz.length === 0) {
+                    return (
+                      <div className="text-center py-8">
+                        <span className="text-6xl mb-4 block">📚</span>
+                        <h3 className={`text-xl font-semibold ${theme.text} mb-2`}>No Quiz Available</h3>
+                        <p className={`${theme.textMuted}`}>Quiz questions haven't been generated for this neighborhood yet.</p>
+                      </div>
+                    );
+                  }
+                  
+                  return !quizState.active ? (
+                    // Quiz Start Screen
+                    <div className="text-center py-8">
+                      <span className="text-6xl mb-4 block">🧠</span>
+                      <h3 className={`text-xl font-semibold ${theme.text} mb-2`}>{selectedNeighborhood} Knowledge Quiz</h3>
+                      <p className={`${theme.textMuted} mb-6`}>{quiz.length} questions • Earn 5 points per correct answer</p>
+                      <button
+                        onClick={() => startQuiz(selectedNeighborhood)}
+                        className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl font-medium hover:from-cyan-600 hover:to-cyan-700 shadow-lg"
+                      >
+                        Start Quiz
+                      </button>
+                      {(quizScores[selectedNeighborhood] || []).length > 0 && (
+                        <p className={`mt-4 ${theme.textMuted}`}>
+                          Your average: <span className="font-bold text-cyan-500">{getQuizAverage(selectedNeighborhood)}%</span>
+                        </p>
+                      )}
+                    </div>
+                  ) : quizState.showResults ? (
+                    // Quiz Results
+                    <div className="text-center py-8">
+                      {(() => {
+                        const correctCount = quizState.answers.reduce((acc, answer, idx) => {
+                          return acc + (answer === quiz[idx].correct ? 1 : 0);
+                        }, 0);
+                        const percentage = Math.round((correctCount / quiz.length) * 100);
+                        return (
+                          <>
+                            <span className="text-6xl mb-4 block">{percentage >= 80 ? '🎉' : percentage >= 60 ? '👍' : '📚'}</span>
+                            <h3 className={`text-xl font-semibold ${theme.text} mb-2`}>Quiz Complete!</h3>
+                            <p className={`text-4xl font-bold mb-2 ${percentage >= 80 ? 'text-emerald-400' : percentage >= 60 ? 'text-amber-400' : 'text-rose-400'}`}>
+                              {percentage}%
+                            </p>
+                            <p className={theme.textMuted}>{correctCount} of {quiz.length} correct • +{correctCount * 5} points earned</p>
+                            
+                            {/* Review Answers */}
+                            <div className="mt-6 text-left space-y-3">
+                              {quiz.map((q, idx) => {
+                                const isCorrect = quizState.answers[idx] === q.correct;
+                                return (
+                                  <div key={idx} className={`p-3 rounded-lg ${isCorrect ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-rose-500/10 border border-rose-500/30'}`}>
+                                    <p className={`text-sm ${theme.text}`}>{q.question}</p>
+                                    <p className={`text-xs mt-1 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                      {isCorrect ? '✓ Correct' : `✗ Your answer: ${q.options[quizState.answers[idx]]} | Correct: ${q.options[q.correct]}`}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
 
-                          <div className="mt-6 flex gap-3 justify-center">
-                            <button
-                              onClick={() => setQuizState({ active: false, currentQuestion: 0, answers: [], showResults: false })}
-                              className={`px-6 py-2 rounded-lg ${theme.bgMuted} ${theme.text} hover:bg-cyan-500/20`}
-                            >
-                              Back to Overview
-                            </button>
-                            <button
-                              onClick={() => startQuiz(selectedNeighborhood)}
-                              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg font-medium"
-                            >
-                              Retake Quiz
-                            </button>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                ) : (
-                  // Active Quiz
-                  <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <span className={theme.textMuted}>Question {quizState.currentQuestion + 1} of {quizQuestions[selectedNeighborhood].length}</span>
-                      <div className={`h-2 flex-1 mx-4 ${darkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-full overflow-hidden`}>
-                        <div 
-                          className="h-full bg-gradient-to-r from-cyan-500 to-violet-500 rounded-full transition-all duration-300"
-                          style={{ width: `${((quizState.currentQuestion + 1) / quizQuestions[selectedNeighborhood].length) * 100}%` }}
-                        />
+                            <div className="mt-6 flex gap-3 justify-center">
+                              <button
+                                onClick={() => setQuizState({ active: false, currentQuestion: 0, answers: [], showResults: false })}
+                                className={`px-6 py-2 rounded-lg ${theme.bgMuted} ${theme.text} hover:bg-cyan-500/20`}
+                              >
+                                Back to Overview
+                              </button>
+                              <button
+                                onClick={() => startQuiz(selectedNeighborhood)}
+                                className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg font-medium"
+                              >
+                                Retake Quiz
+                              </button>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    // Active Quiz
+                    <div>
+                      <div className="flex items-center justify-between mb-6">
+                        <span className={theme.textMuted}>Question {quizState.currentQuestion + 1} of {quiz.length}</span>
+                        <div className={`h-2 flex-1 mx-4 ${darkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-full overflow-hidden`}>
+                          <div 
+                            className="h-full bg-gradient-to-r from-cyan-500 to-violet-500 rounded-full transition-all duration-300"
+                            style={{ width: `${((quizState.currentQuestion + 1) / quiz.length) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <h3 className={`text-lg font-medium ${theme.text} mb-6`}>
+                        {quiz[quizState.currentQuestion].question}
+                      </h3>
+                      
+                      <div className="space-y-3">
+                        {quiz[quizState.currentQuestion].options.map((option, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => answerQuestion(idx)}
+                            className={`w-full p-4 rounded-xl border ${theme.border} ${theme.bgMuted} text-left hover:border-cyan-400 hover:bg-cyan-500/10 transition-all`}
+                          >
+                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${darkMode ? 'bg-slate-600' : 'bg-slate-200'} text-sm font-medium ${theme.text} mr-3`}>
+                              {String.fromCharCode(65 + idx)}
+                            </span>
+                            <span className={theme.text}>{option}</span>
+                          </button>
+                        ))}
                       </div>
                     </div>
-                    
-                    <h3 className={`text-lg font-medium ${theme.text} mb-6`}>
-                      {quizQuestions[selectedNeighborhood][quizState.currentQuestion].question}
-                    </h3>
-                    
-                    <div className="space-y-3">
-                      {quizQuestions[selectedNeighborhood][quizState.currentQuestion].options.map((option, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => answerQuestion(idx)}
-                          className={`w-full p-4 rounded-xl border ${theme.border} ${theme.bgMuted} text-left hover:border-cyan-400 hover:bg-cyan-500/10 transition-all`}
-                        >
-                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${darkMode ? 'bg-slate-600' : 'bg-slate-200'} text-sm font-medium ${theme.text} mr-3`}>
-                            {String.fromCharCode(65 + idx)}
-                          </span>
-                          <span className={theme.text}>{option}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 
@@ -4108,33 +4319,86 @@ Guidelines:
             )}
 
             {/* MARKET DATA VIEW */}
-            {masteryView === 'market' && (
+            {masteryView === 'market' && selectedNeighborhood && (
               <div className="grid lg:grid-cols-2 gap-6">
                 <div className={`${theme.bgCard} rounded-xl border ${theme.border} p-5`}>
                   <h3 className={`font-semibold ${theme.text} mb-4`}>{selectedNeighborhood} Market Snapshot</h3>
-                  <div className="space-y-4">
-                    {[
-                      { label: 'Active Inventory', value: neighborhoodDetails[selectedNeighborhood].inventory, suffix: ' homes' },
-                      { label: 'Average Price', value: `$${neighborhoodDetails[selectedNeighborhood].avgPrice}M`, suffix: '' },
-                      { label: 'Price per Sq Ft', value: `$${neighborhoodDetails[selectedNeighborhood].pricePerSqFt.toLocaleString()}`, suffix: '' },
-                      { label: 'Avg Days on Market', value: neighborhoodDetails[selectedNeighborhood].avgDom, suffix: ' days' },
-                      { label: 'Typical Lot Size', value: neighborhoodDetails[selectedNeighborhood].avgLotSize, suffix: '' },
-                    ].map((stat, i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <span className={theme.textMuted}>{stat.label}</span>
-                        <span className={`font-semibold ${theme.text}`}>{stat.value}{stat.suffix}</span>
+                  {(() => {
+                    const details = getNeighborhoodDetails(selectedNeighborhood);
+                    return (
+                      <div className="space-y-4">
+                        {[
+                          { label: 'Active Inventory', value: details.inventory || 'N/A', suffix: details.inventory ? ' homes' : '' },
+                          { label: 'Average Price', value: details.avgPrice ? `$${details.avgPrice}M` : 'N/A', suffix: '' },
+                          { label: 'Price per Sq Ft', value: details.pricePerSqFt ? `$${details.pricePerSqFt.toLocaleString()}` : 'N/A', suffix: '' },
+                          { label: 'Avg Days on Market', value: details.avgDom || 'N/A', suffix: details.avgDom ? ' days' : '' },
+                          { label: 'Typical Lot Size', value: details.avgLotSize || 'N/A', suffix: '' },
+                        ].map((stat, i) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <span className={theme.textMuted}>{stat.label}</span>
+                            <span className={`font-semibold ${theme.text}`}>{stat.value}{stat.suffix}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </div>
 
                 <div className={`${theme.bgCard} rounded-xl border ${theme.border} p-5`}>
-                  <h3 className={`font-semibold ${theme.text} mb-4`}>Compare Neighborhoods</h3>
-                  <div className="space-y-4">
-                    {['Gables Estates', 'Cocoplum', 'Old Cutler Bay'].map((neighborhood) => {
-                      const details = neighborhoodDetails[neighborhood];
-                      return (
-                        <div key={neighborhood} className={`p-3 rounded-lg ${selectedNeighborhood === neighborhood ? 'bg-cyan-500/10 border border-cyan-500/30' : theme.bgMuted}`}>
+                  <h3 className={`font-semibold ${theme.text} mb-4`}>Neighborhood Details</h3>
+                  {(() => {
+                    const details = getNeighborhoodDetails(selectedNeighborhood);
+                    return (
+                      <div className="space-y-4">
+                        {details.keyBuilders?.length > 0 && (
+                          <div>
+                            <p className={`text-sm ${theme.textMuted} mb-1`}>Key Builders</p>
+                            <p className={`${theme.text}`}>{details.keyBuilders.join(', ')}</p>
+                          </div>
+                        )}
+                        {details.keyArchitects?.length > 0 && (
+                          <div>
+                            <p className={`text-sm ${theme.textMuted} mb-1`}>Key Architects</p>
+                            <p className={`${theme.text}`}>{details.keyArchitects.join(', ')}</p>
+                          </div>
+                        )}
+                        {details.characteristics?.length > 0 && (
+                          <div>
+                            <p className={`text-sm ${theme.textMuted} mb-1`}>Characteristics</p>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {details.characteristics.map((c, i) => (
+                                <span key={i} className={`px-2 py-1 text-xs rounded-full ${theme.bgMuted} ${theme.text}`}>{c}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {details.schoolDistrict && (
+                          <div>
+                            <p className={`text-sm ${theme.textMuted} mb-1`}>School District</p>
+                            <p className={`${theme.text}`}>{details.schoolDistrict}</p>
+                          </div>
+                        )}
+                        {details.securityType && (
+                          <div>
+                            <p className={`text-sm ${theme.textMuted} mb-1`}>Security</p>
+                            <p className={`${theme.text}`}>{details.securityType}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Compare All Neighborhoods */}
+                {Object.keys(customNeighborhoods).length > 1 && (
+                  <div className={`${theme.bgCard} rounded-xl border ${theme.border} p-5 lg:col-span-2`}>
+                    <h3 className={`font-semibold ${theme.text} mb-4`}>Compare Neighborhoods</h3>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.entries(customNeighborhoods).map(([neighborhood, details]) => (
+                        <div 
+                          key={neighborhood} 
+                          className={`p-3 rounded-lg ${selectedNeighborhood === neighborhood ? 'bg-cyan-500/10 border border-cyan-500/30' : theme.bgMuted}`}
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <span className={`font-medium ${theme.text}`}>{neighborhood}</span>
                             <span style={{ color: details.color }}>●</span>
@@ -4142,23 +4406,25 @@ Guidelines:
                           <div className="grid grid-cols-3 gap-2 text-xs">
                             <div>
                               <p className={theme.textMuted}>Avg Price</p>
-                              <p className={`font-semibold ${theme.text}`}>${details.avgPrice}M</p>
+                              <p className={`font-semibold ${theme.text}`}>{details.avgPrice ? `$${details.avgPrice}M` : 'N/A'}</p>
                             </div>
                             <div>
                               <p className={theme.textMuted}>$/SqFt</p>
-                              <p className={`font-semibold ${theme.text}`}>${details.pricePerSqFt}</p>
+                              <p className={`font-semibold ${theme.text}`}>{details.pricePerSqFt ? `$${details.pricePerSqFt}` : 'N/A'}</p>
                             </div>
                             <div>
                               <p className={theme.textMuted}>DOM</p>
-                              <p className={`font-semibold ${theme.text}`}>{details.avgDom}</p>
+                              <p className={`font-semibold ${theme.text}`}>{details.avgDom || 'N/A'}</p>
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
+            )}
+            {/* End selectedNeighborhood conditional */}
             )}
           </div>
         )}
