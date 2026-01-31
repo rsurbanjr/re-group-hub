@@ -273,6 +273,16 @@ export default function REGroupHub({ user }) {
   const [userProfile, setUserProfile] = useState({ displayName: '', company: '', phone: '', title: '' });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   
+  // Google Calendar integration
+  const [googleCalendar, setGoogleCalendar] = useState({
+    connected: false,
+    accessToken: null,
+    refreshToken: null,
+    expiresAt: null
+  });
+  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [syncingCalendar, setSyncingCalendar] = useState(false);
+  
   // Modal states
   const [showModal, setShowModal] = useState(null);
   const [selectedDeal, setSelectedDeal] = useState(null);
@@ -378,6 +388,168 @@ export default function REGroupHub({ user }) {
   ]);
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantLoading, setAssistantLoading] = useState(false);
+
+  // Handle Google Calendar OAuth callback and load stored tokens
+  useEffect(() => {
+    // Check for OAuth callback params
+    const urlParams = new URLSearchParams(window.location.search);
+    const googleAuth = urlParams.get('google_auth');
+    
+    if (googleAuth === 'success') {
+      const accessToken = urlParams.get('access_token');
+      const refreshToken = urlParams.get('refresh_token');
+      const expiresIn = urlParams.get('expires_in');
+      
+      if (accessToken) {
+        const expiresAt = Date.now() + (parseInt(expiresIn) * 1000);
+        const calendarData = { connected: true, accessToken, refreshToken, expiresAt };
+        setGoogleCalendar(calendarData);
+        localStorage.setItem('regroup_google_calendar', JSON.stringify(calendarData));
+        
+        // Clean up URL
+        window.history.replaceState({}, document.title, '/');
+        console.log('✅ Google Calendar connected');
+      }
+    } else if (googleAuth === 'error') {
+      const message = urlParams.get('message');
+      console.error('Google auth error:', message);
+      alert('Failed to connect Google Calendar: ' + message);
+      window.history.replaceState({}, document.title, '/');
+    }
+    
+    // Load stored Google Calendar tokens
+    const stored = localStorage.getItem('regroup_google_calendar');
+    if (stored) {
+      const data = JSON.parse(stored);
+      // Check if token is expired
+      if (data.expiresAt && data.expiresAt > Date.now()) {
+        setGoogleCalendar(data);
+      } else if (data.refreshToken) {
+        // Token expired, try to refresh
+        refreshGoogleToken(data.refreshToken);
+      }
+    }
+  }, []);
+  
+  // Refresh Google access token
+  const refreshGoogleToken = async (refreshToken) => {
+    try {
+      const response = await fetch('/api/calendar', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+      });
+      const data = await response.json();
+      if (data.access_token) {
+        const expiresAt = Date.now() + (data.expires_in * 1000);
+        const calendarData = { connected: true, accessToken: data.access_token, refreshToken, expiresAt };
+        setGoogleCalendar(calendarData);
+        localStorage.setItem('regroup_google_calendar', JSON.stringify(calendarData));
+      }
+    } catch (err) {
+      console.error('Failed to refresh Google token:', err);
+    }
+  };
+  
+  // Google Calendar API helper
+  const calendarAPI = async (action, event = null, eventId = null) => {
+    if (!googleCalendar.accessToken) return null;
+    
+    // Check if token needs refresh
+    if (googleCalendar.expiresAt && googleCalendar.expiresAt < Date.now() + 60000) {
+      await refreshGoogleToken(googleCalendar.refreshToken);
+    }
+    
+    try {
+      const response = await fetch('/api/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action, 
+          accessToken: googleCalendar.accessToken,
+          event,
+          eventId
+        })
+      });
+      return await response.json();
+    } catch (err) {
+      console.error('Calendar API error:', err);
+      return null;
+    }
+  };
+  
+  // Sync task to Google Calendar
+  const syncTaskToCalendar = async (task) => {
+    if (!googleCalendar.connected || !task.dueDate) return;
+    
+    const event = {
+      summary: task.title,
+      description: task.contactId ? `Contact: ${contacts.find(c => c.id === task.contactId)?.name || 'Unknown'}` : '',
+      start: {
+        date: task.dueDate, // All-day event
+      },
+      end: {
+        date: task.dueDate,
+      },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'popup', minutes: 60 }
+        ]
+      }
+    };
+    
+    const result = await calendarAPI('createEvent', event);
+    if (result && result.id) {
+      console.log('✅ Task synced to Google Calendar:', result.id);
+      return result.id;
+    }
+    return null;
+  };
+  
+  // Sync activity/showing to Google Calendar
+  const syncActivityToCalendar = async (activity) => {
+    if (!googleCalendar.connected) return;
+    
+    const event = {
+      summary: `${activity.type}: ${activity.contactName || 'Unknown'}`,
+      description: activity.description || '',
+      start: {
+        dateTime: new Date(activity.date + 'T10:00:00').toISOString(),
+        timeZone: 'America/New_York'
+      },
+      end: {
+        dateTime: new Date(activity.date + 'T11:00:00').toISOString(),
+        timeZone: 'America/New_York'
+      }
+    };
+    
+    const result = await calendarAPI('createEvent', event);
+    if (result && result.id) {
+      console.log('✅ Activity synced to Google Calendar:', result.id);
+      return result.id;
+    }
+    return null;
+  };
+  
+  // Fetch calendar events
+  const fetchCalendarEvents = async () => {
+    if (!googleCalendar.connected) return;
+    setSyncingCalendar(true);
+    const result = await calendarAPI('listEvents');
+    if (result && result.items) {
+      setCalendarEvents(result.items);
+    }
+    setSyncingCalendar(false);
+  };
+  
+  // Disconnect Google Calendar
+  const disconnectGoogleCalendar = () => {
+    setGoogleCalendar({ connected: false, accessToken: null, refreshToken: null, expiresAt: null });
+    setCalendarEvents([]);
+    localStorage.removeItem('regroup_google_calendar');
+    console.log('🔌 Google Calendar disconnected');
+  };
 
   // Load data from Supabase or localStorage on mount
   useEffect(() => {
@@ -2083,9 +2255,44 @@ Guidelines:
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h2 className={`text-xl font-semibold ${theme.text}`}>Calendar</h2>
-                <p className={theme.textMuted}>View tasks and activities by date</p>
+                <p className={theme.textMuted}>
+                  View tasks and activities by date
+                  {googleCalendar.connected && <span className="text-green-500 ml-2">• Google Calendar connected</span>}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Google Calendar Sync */}
+                {googleCalendar.connected && (
+                  <button
+                    onClick={fetchCalendarEvents}
+                    disabled={syncingCalendar}
+                    className={`px-3 py-2 ${theme.bgMuted} rounded-lg ${theme.text} text-sm font-medium hover:bg-cyan-500/20 flex items-center gap-2`}
+                  >
+                    <svg className={`w-4 h-4 ${syncingCalendar ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                    {syncingCalendar ? 'Syncing...' : 'Sync Google'}
+                  </button>
+                )}
+                {/* Add Event Button */}
+                <button
+                  onClick={() => { 
+                    setFormData({ 
+                      title: '', 
+                      date: new Date().toISOString().split('T')[0], 
+                      startTime: '09:00',
+                      endTime: '10:00',
+                      description: '',
+                      allDay: false,
+                      syncToGoogle: googleCalendar.connected
+                    }); 
+                    setShowModal('calendarEvent'); 
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg font-medium hover:from-cyan-600 hover:to-cyan-700 shadow-lg shadow-cyan-500/25"
+                >
+                  <Icons.Plus /> Add Event
+                </button>
                 {/* View Toggle */}
                 <div className={`flex ${theme.bgMuted} rounded-lg p-1`}>
                   <button
@@ -2126,6 +2333,73 @@ Guidelines:
                 </button>
               </div>
             </div>
+
+            {/* Google Calendar Events List */}
+            {googleCalendar.connected && calendarEvents.length > 0 && (
+              <div className={`${theme.bgCard} rounded-xl border ${theme.border} p-4`}>
+                <h3 className={`font-medium ${theme.text} mb-3 flex items-center gap-2`}>
+                  <svg className="w-5 h-5 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  Google Calendar Events ({calendarEvents.length})
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {calendarEvents.slice(0, 10).map(event => (
+                    <div 
+                      key={event.id} 
+                      className={`flex items-center justify-between p-2 rounded-lg ${theme.bgMuted} group`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${theme.text} truncate`}>{event.summary}</p>
+                        <p className={`text-xs ${theme.textMuted}`}>
+                          {event.start?.dateTime 
+                            ? new Date(event.start.dateTime).toLocaleString() 
+                            : event.start?.date}
+                        </p>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => {
+                            const start = event.start?.dateTime ? new Date(event.start.dateTime) : new Date(event.start?.date);
+                            const end = event.end?.dateTime ? new Date(event.end.dateTime) : new Date(event.end?.date);
+                            setFormData({
+                              googleEventId: event.id,
+                              title: event.summary || '',
+                              description: event.description || '',
+                              date: start.toISOString().split('T')[0],
+                              startTime: event.start?.dateTime ? start.toTimeString().slice(0,5) : '09:00',
+                              endTime: event.end?.dateTime ? end.toTimeString().slice(0,5) : '10:00',
+                              allDay: !event.start?.dateTime,
+                              syncToGoogle: true
+                            });
+                            setShowModal('calendarEvent');
+                          }}
+                          className={`p-1 rounded ${theme.textMuted} hover:text-cyan-400`}
+                          title="Edit"
+                        >
+                          <Icons.Edit />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm('Delete this event from Google Calendar?')) {
+                              await calendarAPI('deleteEvent', null, event.id);
+                              fetchCalendarEvents();
+                            }
+                          }}
+                          className={`p-1 rounded ${theme.textMuted} hover:text-rose-400`}
+                          title="Delete"
+                        >
+                          <Icons.Trash />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Month/Year Display */}
             <div className={`text-center ${theme.text} text-lg font-semibold`}>
@@ -3971,6 +4245,67 @@ Guidelines:
                 </div>
               </div>
               
+              {/* Google Calendar Integration */}
+              <div className={`p-4 rounded-xl ${theme.bgMuted}`}>
+                <h3 className={`font-medium ${theme.text} mb-3 flex items-center gap-2`}>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  Google Calendar
+                </h3>
+                {googleCalendar.connected ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-green-500">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-sm font-medium">Connected</span>
+                    </div>
+                    <p className={`text-xs ${theme.textMuted}`}>
+                      Tasks and activities will sync to your Google Calendar
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={fetchCalendarEvents}
+                        disabled={syncingCalendar}
+                        className={`flex-1 px-3 py-2 text-sm rounded-lg ${theme.bgCard} ${theme.text} hover:bg-cyan-500/20 transition-colors`}
+                      >
+                        {syncingCalendar ? 'Syncing...' : 'Sync Now'}
+                      </button>
+                      <button
+                        onClick={disconnectGoogleCalendar}
+                        className="px-3 py-2 text-sm rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className={`text-sm ${theme.textMuted}`}>
+                      Connect your Google Calendar to sync tasks and showings
+                    </p>
+                    <a
+                      href="/api/auth/google"
+                      className="block w-full px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium text-center"
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24">
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Connect Google Calendar
+                      </span>
+                    </a>
+                  </div>
+                )}
+              </div>
+              
               <button
                 onClick={async () => {
                   if (isSupabaseConfigured() && user?.id) {
@@ -4810,15 +5145,34 @@ Guidelines:
                 <option value="">No contact</option>
                 {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              {googleCalendar.connected && (
+                <label className={`flex items-center gap-2 cursor-pointer ${theme.text}`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.syncToCalendar || false}
+                    onChange={e => setFormData({...formData, syncToCalendar: e.target.checked})}
+                    className="w-4 h-4 rounded border-slate-300 text-cyan-500 focus:ring-cyan-500"
+                  />
+                  <span className="text-sm">Add to Google Calendar</span>
+                </label>
+              )}
             </div>
             <div className={`p-4 border-t ${theme.border} flex justify-end gap-2`}>
               <button onClick={() => setShowModal(null)} className={`px-4 py-2 ${theme.textMuted} ${theme.bgMuted} rounded-lg`}>Cancel</button>
               <button onClick={async () => {
                 if (formData.title) {
                   const taskData = { ...formData, contactId: formData.contactId || null, status: 'Pending' };
+                  delete taskData.syncToCalendar;
                   const newTask = await dbInsert('tasks', taskData);
                   setTasks([newTask, ...tasks]);
+                  
+                  // Sync to Google Calendar if checked
+                  if (formData.syncToCalendar && googleCalendar.connected) {
+                    await syncTaskToCalendar(newTask);
+                  }
+                  
                   setShowModal(null);
+                  setFormData({});
                 }
               }} className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700">Add Task</button>
             </div>
@@ -4865,6 +5219,155 @@ Guidelines:
                   setShowModal(null);
                 }
               }} className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700">Log Activity</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calendar Event Modal (Add/Edit) */}
+      {showModal === 'calendarEvent' && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setShowModal(null); setFormData({}); }}>
+          <div className={`${theme.bgCard} rounded-xl w-full max-w-md transition-colors duration-300`} onClick={e => e.stopPropagation()}>
+            <div className={`p-4 border-b ${theme.border} flex justify-between items-center`}>
+              <h3 className={`font-semibold ${theme.text}`}>
+                {formData.googleEventId ? 'Edit Event' : 'Add Event'}
+              </h3>
+              <button onClick={() => { setShowModal(null); setFormData({}); }} className={`p-1 ${theme.bgMuted} rounded ${theme.textMuted}`}><Icons.X /></button>
+            </div>
+            <div className="p-4 space-y-4">
+              <input 
+                type="text" 
+                placeholder="Event title..." 
+                className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text} focus:outline-none focus:border-cyan-400`}
+                value={formData.title || ''} 
+                onChange={e => setFormData({...formData, title: e.target.value})}
+              />
+              <textarea 
+                placeholder="Description (optional)..." 
+                className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`} 
+                rows={2} 
+                value={formData.description || ''} 
+                onChange={e => setFormData({...formData, description: e.target.value})} 
+              />
+              <div className="grid grid-cols-1 gap-4">
+                <input 
+                  type="date" 
+                  className={`px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`} 
+                  value={formData.date || ''} 
+                  onChange={e => setFormData({...formData, date: e.target.value})} 
+                />
+              </div>
+              <label className={`flex items-center gap-2 cursor-pointer ${theme.text}`}>
+                <input
+                  type="checkbox"
+                  checked={formData.allDay || false}
+                  onChange={e => setFormData({...formData, allDay: e.target.checked})}
+                  className="w-4 h-4 rounded border-slate-300 text-cyan-500 focus:ring-cyan-500"
+                />
+                <span className="text-sm">All day event</span>
+              </label>
+              {!formData.allDay && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-xs ${theme.textMuted} mb-1`}>Start Time</label>
+                    <input 
+                      type="time" 
+                      className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`} 
+                      value={formData.startTime || '09:00'} 
+                      onChange={e => setFormData({...formData, startTime: e.target.value})} 
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs ${theme.textMuted} mb-1`}>End Time</label>
+                    <input 
+                      type="time" 
+                      className={`w-full px-3 py-2 border ${theme.border} rounded-lg ${theme.bgInput} ${theme.text}`} 
+                      value={formData.endTime || '10:00'} 
+                      onChange={e => setFormData({...formData, endTime: e.target.value})} 
+                    />
+                  </div>
+                </div>
+              )}
+              {googleCalendar.connected && (
+                <label className={`flex items-center gap-2 cursor-pointer ${theme.text}`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.syncToGoogle !== false}
+                    onChange={e => setFormData({...formData, syncToGoogle: e.target.checked})}
+                    className="w-4 h-4 rounded border-slate-300 text-cyan-500 focus:ring-cyan-500"
+                  />
+                  <span className="text-sm flex items-center gap-2">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sync to Google Calendar
+                  </span>
+                </label>
+              )}
+            </div>
+            <div className={`p-4 border-t ${theme.border} flex justify-between`}>
+              {formData.googleEventId && (
+                <button 
+                  onClick={async () => {
+                    if (confirm('Delete this event?')) {
+                      await calendarAPI('deleteEvent', null, formData.googleEventId);
+                      fetchCalendarEvents();
+                      setShowModal(null);
+                      setFormData({});
+                    }
+                  }} 
+                  className="px-4 py-2 text-rose-500 hover:bg-rose-500/10 rounded-lg"
+                >
+                  Delete
+                </button>
+              )}
+              <div className={`flex gap-2 ${!formData.googleEventId ? 'ml-auto' : ''}`}>
+                <button onClick={() => { setShowModal(null); setFormData({}); }} className={`px-4 py-2 ${theme.textMuted} ${theme.bgMuted} rounded-lg`}>Cancel</button>
+                <button 
+                  onClick={async () => {
+                    if (formData.title && formData.date) {
+                      const event = {
+                        summary: formData.title,
+                        description: formData.description || '',
+                      };
+                      
+                      if (formData.allDay) {
+                        event.start = { date: formData.date };
+                        event.end = { date: formData.date };
+                      } else {
+                        event.start = {
+                          dateTime: new Date(`${formData.date}T${formData.startTime || '09:00'}:00`).toISOString(),
+                          timeZone: 'America/New_York'
+                        };
+                        event.end = {
+                          dateTime: new Date(`${formData.date}T${formData.endTime || '10:00'}:00`).toISOString(),
+                          timeZone: 'America/New_York'
+                        };
+                      }
+                      
+                      if (formData.syncToGoogle !== false && googleCalendar.connected) {
+                        if (formData.googleEventId) {
+                          // Update existing event
+                          await calendarAPI('updateEvent', event, formData.googleEventId);
+                        } else {
+                          // Create new event
+                          await calendarAPI('createEvent', event);
+                        }
+                        fetchCalendarEvents();
+                      }
+                      
+                      setShowModal(null);
+                      setFormData({});
+                    }
+                  }} 
+                  className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700"
+                >
+                  {formData.googleEventId ? 'Update Event' : 'Add Event'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
